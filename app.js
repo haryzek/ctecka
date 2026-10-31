@@ -56,7 +56,8 @@ var DBX = {
     if (Date.now() < this.token.exp) return this.token.access;
     var r = await fetch('https://api.dropboxapi.com/oauth2/token', {method: 'POST',
       body: new URLSearchParams({grant_type: 'refresh_token', refresh_token: this.token.refresh, client_id: C.dropboxKey})});
-    if (!r.ok){ if (r.status === 400 || r.status === 401) this.odhlas(); throw new Error('Dropbox: přístup vypršel, připoj ho znovu.'); }
+    if (!r.ok){ var duvod = (await r.text()).slice(0, 120); if (r.status === 400 || r.status === 401) this.odhlas();
+      throw new Error('Dropbox: přístup vypršel, připoj ho znovu (' + r.status + ': ' + duvod + ').'); }
     this.uloz(await r.json()); return this.token.access;
   },
   odhlas: function(){ this.token = null; pis('dbx', null); },
@@ -64,7 +65,7 @@ var DBX = {
     var r = await fetch('https://content.dropboxapi.com/2/files/download', {method: 'POST',
       headers: {Authorization: 'Bearer ' + await this.pristup(), 'Dropbox-API-Arg': hlavicka({path: '/' + cesta})}});
     if (r.status === 409) return null;   // soubor neexistuje
-    if (!r.ok) throw new Error('Dropbox: ' + cesta + ' (' + r.status + ')');
+    if (!r.ok) throw new Error('Dropbox: ' + cesta + ' (' + r.status + ': ' + (await r.text()).slice(0, 160) + ')');
     return r;
   },
   nahraj: async function(cesta, text){
