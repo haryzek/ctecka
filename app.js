@@ -154,7 +154,10 @@ async function nactiHtml(it){
 // ---- domov a police ----
 function polozky(typ){
   return ((katalog && katalog.items) || []).filter(function(i){ return i.type === typ; })
-    .sort(function(a, b){ return String(b.updated || b.created || '').localeCompare(String(a.updated || a.created || '')); });
+    .sort(function(a, b){   // nejnovější nahoře; díly jednoho seriálu po sobě v pořadí
+      if (a.series && b.series && a.series.id === b.series.id) return a.series.part - b.series.part;
+      return String(b.updated || b.created || '').localeCompare(String(a.updated || a.created || '')) || (b.number || 0) - (a.number || 0);
+    });
 }
 async function kartickaZMinula(){
   var pr = stav().precteno;
@@ -169,7 +172,7 @@ async function kartickaZMinula(){
 }
 function info(i){
   if (i.type === 'ucebnice') return i.pages ? Object.values(i.pages).pop() + ' stran' : '';
-  if (i.type === 'digest') return '~' + (i.minut || 10) + ' min';
+  if (i.type === 'digest') return (i.series ? 'díl ' + i.series.part + '/' + i.series.parts + ' · ' : '') + '~' + (i.minut || 10) + ' min';
   return i.plates ? i.plates + ' listů' : '';
 }
 function seznam(p){
