@@ -1,0 +1,16 @@
+{
+  "name": "Čtečka – učebnice, průřezy a digest",
+  "short_name": "Čtečka",
+  "lang": "cs",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f5f1e8",
+  "theme_color": "#f5f1e8",
+  "icons": [
+    {"src": "ikona-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+    {"src": "ikona-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"},
+    {"src": "ikona.svg", "sizes": "any", "type": "image/svg+xml"}
+  ]
+}

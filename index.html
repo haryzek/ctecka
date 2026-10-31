@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Čtečka</title>
+<meta name="theme-color" content="#f5f1e8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141310" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="ikona.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="ikona-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400..700;1,8..60,400..600&family=IBM+Plex+Sans+Condensed:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#f5f1e8; --paper:#fbf8f1; --ink:#1f1c17; --ink2:#5f574b; --rule:#d9cfbd; --soft:#ebe4d6;
+  --acc:#c2492f; --acc2:#2f6f8f; --shadow:rgba(31,28,23,.12);
+  --display:"Fraunces","Iowan Old Style",Georgia,serif; --body:"Source Serif 4",Georgia,serif;
+  --label:"IBM Plex Sans Condensed","Arial Narrow",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141310; --paper:#1b1a16; --ink:#ece5d6; --ink2:#a99f8d; --rule:#3a352c; --soft:#25231e;
+  --acc:#ef7a5c; --acc2:#6fb3d4; --shadow:rgba(0,0,0,.4); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141310; --paper:#1b1a16; --ink:#ece5d6; --ink2:#a99f8d; --rule:#3a352c; --soft:#25231e;
+  --acc:#ef7a5c; --acc2:#6fb3d4; --shadow:rgba(0,0,0,.4); color-scheme:dark}
+/* e-ink (Boox): černobílé, bez stínů a přechodů */
+:root[data-eink]{--bg:#fff; --paper:#fff; --ink:#000; --ink2:#333; --rule:#000; --soft:#fff; --acc:#000; --acc2:#000; --shadow:transparent; color-scheme:light}
+:root[data-eink] *{transition:none!important;animation:none!important}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font:18px/1.55 var(--body);-webkit-text-size-adjust:100%}
+button{font:500 15px var(--label);color:var(--ink);background:var(--soft);border:1px solid var(--rule);border-radius:999px;padding:8px 14px;min-height:40px;cursor:pointer}
+button.hlavni{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+
+/* ---- domov ---- */
+#domov{max-width:44rem;margin:0 auto;padding:max(20px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 64px max(16px,env(safe-area-inset-left))}
+.lista{display:flex;align-items:center;justify-content:space-between;gap:12px;font:500 13px var(--label);letter-spacing:.16em;text-transform:uppercase;color:var(--ink2)}
+.lista .ovl{display:flex;gap:6px}
+.lista button{min-height:36px;padding:6px 12px;letter-spacing:0;text-transform:none}
+h1{font:400 clamp(40px,10vw,64px)/1 var(--display);letter-spacing:-.02em;margin:22px 0 4px}
+h1 em{color:var(--acc)}
+.datum{color:var(--ink2);font-style:italic;margin:0 0 24px}
+.rano{display:block;text-decoration:none;color:inherit;background:var(--paper);border:1px solid var(--rule);border-radius:10px;padding:20px 20px 18px;box-shadow:0 6px 24px var(--shadow)}
+.rano .k{font:500 12px var(--label);letter-spacing:.18em;text-transform:uppercase;color:var(--acc)}
+.rano h2{font:500 clamp(30px,7vw,42px)/1.05 var(--display);margin:8px 0 6px;letter-spacing:-.01em}
+.rano p{margin:0;color:var(--ink2)}
+.rano .meta{font:14px var(--label);color:var(--ink2);margin-top:12px;display:flex;gap:14px;flex-wrap:wrap}
+.rano.hotovo{box-shadow:none;background:transparent}
+.karticka{margin:18px 0 0;border:1px dashed var(--rule);border-radius:10px;background:var(--paper)}
+.karticka summary{cursor:pointer;list-style:none;padding:14px 16px;font:20px/1.3 var(--display)}
+.karticka summary::-webkit-details-marker{display:none}
+.karticka summary::before{content:"Kartička z minula · zkus si odpovědět";display:block;font:500 12px var(--label);letter-spacing:.14em;text-transform:uppercase;color:var(--acc2);margin-bottom:6px}
+.karticka div{padding:0 16px 14px;color:var(--ink2)}
+section.regal h3{font:500 13px var(--label);letter-spacing:.18em;text-transform:uppercase;color:var(--acc);margin:36px 0 6px}
+.regal ul{list-style:none;margin:0;padding:0}
+.regal li a{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;padding:12px 0;border-top:1px solid var(--rule);color:inherit;text-decoration:none}
+.regal li b{font:500 21px/1.2 var(--display)}
+.regal li span{grid-column:1;font-size:15.5px;color:var(--ink2);line-height:1.35}
+.regal li i{grid-row:1/span 2;grid-column:2;align-self:center;font:13px var(--label);font-style:normal;color:var(--ink2);text-align:right;white-space:nowrap}
+.regal li.precteno b::after{content:" ✓";color:var(--acc2);font-size:.8em}
+.stav{font:14px var(--label);color:var(--ink2);margin-top:28px;min-height:1.4em}
+.prazdno{border:1px dashed var(--rule);border-radius:10px;padding:18px;color:var(--ink2)}
+dialog{border:1px solid var(--rule);border-radius:12px;background:var(--paper);color:var(--ink);max-width:min(30rem,calc(100vw - 32px));padding:18px 20px}
+dialog::backdrop{background:rgba(0,0,0,.35)}
+dialog h2{font:500 26px var(--display);margin:0 0 10px}
+dialog label{display:flex;gap:10px;align-items:center;margin:10px 0;font:16px var(--label)}
+dialog .rada{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+dialog p{font-size:15px;color:var(--ink2)}
+
+/* ---- čtení ---- */
+#cteni{position:fixed;inset:0;background:var(--bg);display:none;flex-direction:column;z-index:10}
+#cteni.on{display:flex}
+#cteni header{display:flex;align-items:center;gap:10px;padding:max(6px,env(safe-area-inset-top)) 10px 6px;border-bottom:1px solid var(--rule);background:var(--bg);font:15px var(--label);transition:margin-top .25s ease}
+#cteni header.skryt{margin-top:-60px}
+#cteni header b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+#cteni header button{min-height:36px;padding:4px 12px}
+#cteni iframe{flex:1;border:0;width:100%;background:var(--bg)}
+</style>
+</head>
+<body>
+<main id="domov">
+  <div class="lista"><span>Čtečka</span><span class="ovl"><button id="b-sync" title="Stáhnout novinky">↻ obnovit</button><button id="b-nast" title="Nastavení">⚙</button></span></div>
+  <h1>Ráno <em>pro Boba</em></h1>
+  <p class="datum" id="datum"></p>
+  <div id="ranni"></div>
+  <div id="regaly"></div>
+  <p class="stav" id="stav" aria-live="polite"></p>
+</main>
+
+<section id="cteni" aria-label="Čtení">
+  <header id="c-hlava"><button id="c-zpet">← police</button><b id="c-nazev"></b></header>
+  <iframe id="c-ram" title="Výrobek"></iframe>
+</section>
+
+<dialog id="nastaveni">
+  <h2>Nastavení</h2>
+  <label><input type="checkbox" id="n-eink"> E-ink režim (Boox): bez animací, černobíle</label>
+  <label>Vzhled <select id="n-tema"><option value="">podle systému</option><option value="light">světlý</option><option value="dark">tmavý</option></select></label>
+  <p id="n-dropbox"></p>
+  <div class="rada"><button id="n-pripojit" class="hlavni">Připojit Dropbox</button><button id="n-odpojit">Odpojit</button><button id="n-zavrit">Zavřít</button></div>
+</dialog>
+
+<script src="nastaveni.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

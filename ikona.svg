@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#f5f1e8"/>
+  <!-- otevřená kniha, tenká inkoustová linka, červená záložka -->
+  <g fill="none" stroke="#1f1c17" stroke-width="14" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M256 168 C214 140 158 132 104 140 V360 C158 352 214 360 256 388 Z" fill="#fbf8f1"/>
+    <path d="M256 168 C298 140 354 132 408 140 V360 C354 352 298 360 256 388 Z" fill="#fbf8f1"/>
+    <path d="M140 196 C172 192 204 196 228 210 M140 240 C172 236 204 240 228 254 M140 284 C172 280 204 284 228 298" stroke-width="8" opacity=".55"/>
+  </g>
+  <path d="M330 136 V236 L352 216 L374 236 V136 Z" fill="#c2492f"/>
+  <circle cx="256" cy="430" r="14" fill="#c2492f"/>
+</svg>
