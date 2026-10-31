@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Čtečka</title>
+<style>body{margin:0;background:#f5f1e8;color:#5f574b;font:16px system-ui;display:grid;place-items:center;min-height:100vh}
+@media (prefers-color-scheme:dark){body{background:#141310;color:#a99f8d}}</style>
+</head>
+<body>
+<p id="zprava">Otevírám…</p>
+<script>
+/* Čtení jednoho výrobku jako celé stránky (prohlížeč pak při rolování schová adresní řádek).
+   Výrobek se vezme z offline paměti čtečky (Cache Storage, plní ji app.js), přidá se e-ink
+   a téma podle nastavení a „most“, který si pamatuje pozici a značí přečteno. Zpět = šipka zpět. */
+(async function(){
+  function cti(k, d){ try { var v = localStorage.getItem('ctecka:' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
+  var cesta = new URLSearchParams(location.search).get('c') || '';
+  var katalog = cti('katalog', {items: []}), volby = cti('volby', {});
+  var it = (katalog.items || []).find(function(i){ return i.path === cesta; });
+  var r = it && await (await caches.open('ctecka-knihovna-v1')).match(new URL('knihovna/' + it.path + '?h=' + it.hash, location.href).href);
+  if (!r){ document.getElementById('zprava').textContent = 'Tenhle výrobek není v paměti. Vrať se na polici a dej ↻ obnovit.'; return; }
+  var html = await r.text();
+  if (volby.eink) html = html.replace(/<head[^>]*>/i, function(m){ return m + '<style>*{animation:none!important;transition:none!important;'
+    + 'box-shadow:none!important;scroll-behavior:auto!important}html{filter:grayscale(1) contrast(1.15)}</style>'; });
+  if (volby.tema) html = html.replace(/<html([^>]*)>/i, '<html$1 data-theme="' + volby.tema + '">');
+  var most = '<script>(function(){var K="ctecka:",P=' + JSON.stringify(cesta) + ';'
+    + 'function c(k,d){try{var v=localStorage.getItem(K+k);return v?JSON.parse(v):d}catch(e){return d}}'
+    + 'function w(k,v){try{localStorage.setItem(K+k,JSON.stringify(v))}catch(e){}}'
+    + 'function dnes(){var d=new Date();return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2)}'
+    + 'var p=c("pozice",{})[P];if(p)setTimeout(function(){scrollTo(0,p)},150);'
+    + 'var t;addEventListener("scroll",function(){clearTimeout(t);t=setTimeout(function(){var q=c("pozice",{});q[P]=Math.round(scrollY);w("pozice",q)},400);'
+    + 'if(scrollY+innerHeight>document.documentElement.scrollHeight-240){var s=c("stav",{})||{};s.precteno=s.precteno||{};'
+    + 'if(!s.precteno[P]){s.precteno[P]=dnes();w("stav",s)}}},{passive:true});})();<\/script>';
+  html = /<\/body>/i.test(html) ? html.replace(/<\/body>(?![\s\S]*<\/body>)/i, most + '</body>') : html + most;
+  document.open(); document.write(html); document.close();
+})();
+</script>
+</body>
+</html>

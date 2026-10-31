@@ -1,7 +1,7 @@
 /* Service worker čtečky: skořápka apky a fonty offline. Knihovnu (výrobky) si do vlastní cache
    ukládá app.js. Při změně skořápky zvedni VERZE. */
-var VERZE = 'ctecka-skorapka-3';
-var SKORAPKA = ['./', 'index.html', 'app.js', 'nastaveni.js', 'manifest.webmanifest', 'ikona.svg', 'ikona-192.png', 'ikona-512.png'];
+var VERZE = 'ctecka-skorapka-4';
+var SKORAPKA = ['./', 'index.html', 'cti.html', 'app.js', 'nastaveni.js', 'manifest.webmanifest', 'ikona.svg', 'ikona-192.png', 'ikona-512.png'];
 
 self.addEventListener('install', function(e){
   e.waitUntil(caches.open(VERZE).then(function(c){ return c.addAll(SKORAPKA); }).then(function(){ return self.skipWaiting(); }));

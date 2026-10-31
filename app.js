@@ -1,11 +1,13 @@
 /* Čtečka – Bobova knihovna učebnic, průřezů a digestu.
    Obsah žije v Dropboxu (složka aplikace) a stahuje se do Cache Storage, takže čtení jde offline.
-   Katalog (katalog.json) a výrobky vyrábí nastroje/police/vydej.py v textbooku. */
+   Katalog (katalog.json) a výrobky vyrábí nastroje/police/vydej.py v textbooku. Výrobek se
+   otevírá jako samostatná stránka (blob URL), aby prohlížeč při rolování schoval adresní řádek. */
 (function(){
 'use strict';
 var C = window.CTECKA || {};
 var LOK = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
 var CACHE = 'ctecka-knihovna-v1';
+var POLICE = [['digest', 'Digest'], ['prurez', 'Průřezy'], ['ucebnice', 'Učebnice']];
 var $ = function(id){ return document.getElementById(id); };
 function iso(d){ return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 var DNES = iso(new Date());
@@ -14,9 +16,9 @@ var DNES = iso(new Date());
 function cti(k, vychozi){ try { var v = localStorage.getItem('ctecka:' + k); return v ? JSON.parse(v) : vychozi; } catch (e) { return vychozi; } }
 function pis(k, v){ try { localStorage.setItem('ctecka:' + k, JSON.stringify(v)); } catch (e) {} }
 
-var stav = cti('stav', {precteno: {}, dnes: null});   // precteno: {cesta: datum}, dnes: {datum, cesta}
 var katalog = cti('katalog', null);
 var volby = cti('volby', {eink: false, tema: ''});
+function stav(){ var s = cti('stav', null) || {}; s.precteno = s.precteno || {}; return s; }   // čte se čerstvě: zapisuje ho i otevřený výrobek
 
 function uplatniVolby(){
   var r = document.documentElement;
@@ -61,6 +63,12 @@ var DBX = {
     this.uloz(await r.json()); return this.token.access;
   },
   odhlas: function(){ this.token = null; pis('dbx', null); },
+  api: async function(funkce, telo){
+    var r = await fetch('https://api.dropboxapi.com/2/' + funkce, {method: 'POST', body: JSON.stringify(telo),
+      headers: {Authorization: 'Bearer ' + await this.pristup(), 'Content-Type': 'application/json'}});
+    if (!r.ok) throw new Error('Dropbox: ' + funkce + ' (' + r.status + ': ' + (await r.text()).slice(0, 160) + ')');
+    return r.json();
+  },
   stahni: async function(cesta){
     var r = await fetch('https://content.dropboxapi.com/2/files/download', {method: 'POST',
       headers: {Authorization: 'Bearer ' + await this.pristup(), 'Dropbox-API-Arg': hlavicka({path: '/' + cesta})}});
@@ -73,7 +81,13 @@ var DBX = {
       headers: {Authorization: 'Bearer ' + await this.pristup(), 'Content-Type': 'application/octet-stream',
         'Dropbox-API-Arg': hlavicka({path: '/' + cesta, mode: 'overwrite', mute: true})}});
     if (!r.ok) throw new Error('Dropbox: zápis ' + cesta + ' (' + r.status + ')');
-  }
+  },
+  soubory: async function(){   // cesty všech souborů ve složce aplikace (malými písmeny, bez úvodního /)
+    var j = await this.api('files/list_folder', {path: '', recursive: true}), vse = j.entries;
+    while (j.has_more){ j = await this.api('files/list_folder/continue', {cursor: j.cursor}); vse = vse.concat(j.entries); }
+    return new Set(vse.filter(function(e){ return e['.tag'] === 'file'; }).map(function(e){ return e.path_lower.slice(1); }));
+  },
+  smaz: function(cesta){ return this.api('files/delete_v2', {path: '/' + cesta}); }
 };
 
 // zdroj knihovny: Dropbox, při vývoji na localhostu složka z disku
@@ -86,7 +100,7 @@ var zdroj = {
   }
 };
 
-// ---- synchronizace: katalog, stav přečtení, nové výrobky do cache ----
+// ---- synchronizace: katalog, co v Dropboxu opravdu leží, stav přečtení, nové výrobky do cache ----
 function klic(it){ return new URL('knihovna/' + it.path + '?h=' + it.hash, location.href).href; }
 async function synchronizuj(){
   if (!zdroj.ma()){ hlas(C.dropboxKey ? 'Připoj Dropbox v nastavení (⚙).' : 'V nastaveni.js chybí Dropbox klíč.'); return; }
@@ -94,8 +108,13 @@ async function synchronizuj(){
   try {
     var r = await zdroj.soubor('katalog.json');
     if (!r){ hlas('Knihovna je zatím prázdná.'); return; }
-    katalog = await r.json(); pis('katalog', katalog);
-    if (DBX.token){ var s = await DBX.stahni('stav.json'); if (s) slucStav(await s.json()); }
+    katalog = await r.json();
+    if (DBX.token){
+      var lezi = await DBX.soubory();   // co Bob smazal v Dropboxu (nebo košem ve čtečce), už neukazovat
+      katalog.items = katalog.items.filter(function(i){ return lezi.has(i.path.toLowerCase()); });
+      await synchronizujStav();
+    }
+    pis('katalog', katalog);
     var cache = await caches.open(CACHE), nove = 0, chyb = 0;
     for (var i = 0; i < katalog.items.length; i++){
       var it = katalog.items[i];
@@ -112,6 +131,14 @@ async function synchronizuj(){
   }
   vykresli();
 }
+async function synchronizujStav(){   // sjednotit „přečteno“ mezi zařízeními přes stav.json v Dropboxu
+  var s = stav(), r = await DBX.stahni('stav.json'), vzdaleny = r ? (await r.json()).precteno || {} : {};
+  var zmena = false;
+  Object.keys(vzdaleny).forEach(function(k){ if (!s.precteno[k] || vzdaleny[k] < s.precteno[k]) s.precteno[k] = vzdaleny[k]; });
+  Object.keys(s.precteno).forEach(function(k){ if (vzdaleny[k] !== s.precteno[k]) zmena = true; });
+  pis('stav', s);
+  if (zmena) await DBX.nahraj('stav.json', JSON.stringify({precteno: s.precteno}));
+}
 async function doCache(cache, it){
   var f = await zdroj.soubor(it.path); if (!f) return false;
   var b = await f.blob();
@@ -124,34 +151,15 @@ async function nactiHtml(it){
   try { var b = await doCache(cache, it); return b ? b.text() : null; } catch (e) { return null; }
 }
 
-function slucStav(jiny){
-  Object.keys(jiny.precteno || {}).forEach(function(k){
-    if (!stav.precteno[k] || jiny.precteno[k] < stav.precteno[k]) stav.precteno[k] = jiny.precteno[k];
-  });
-  pis('stav', stav);
-}
-var odlozeno = null;
-function oznacPrecteno(it){
-  if (stav.precteno[it.path]) return;
-  stav.precteno[it.path] = DNES; pis('stav', stav);
-  if (DBX.token){ clearTimeout(odlozeno); odlozeno = setTimeout(function(){ DBX.nahraj('stav.json', JSON.stringify({precteno: stav.precteno})).catch(function(){}); }, 2000); }
-}
-
-// ---- domov: Ráno pro Boba + police ----
-function polozky(typ){ return ((katalog && katalog.items) || []).filter(function(i){ return i.type === typ; }); }
-function dnesniHeslo(){
-  var hesla = polozky('digest').sort(function(a, b){ return (a.number || 0) - (b.number || 0) || String(a.created).localeCompare(String(b.created)); });
-  if (stav.dnes && stav.dnes.datum === DNES){
-    var x = hesla.find(function(i){ return i.path === stav.dnes.cesta; });
-    if (x) return x;
-  }
-  var dalsi = hesla.find(function(i){ return !stav.precteno[i.path]; });
-  if (dalsi){ stav.dnes = {datum: DNES, cesta: dalsi.path}; pis('stav', stav); }
-  return dalsi || null;
+// ---- domov a police ----
+function polozky(typ){
+  return ((katalog && katalog.items) || []).filter(function(i){ return i.type === typ; })
+    .sort(function(a, b){ return String(b.updated || b.created || '').localeCompare(String(a.updated || a.created || '')); });
 }
 async function kartickaZMinula(){
-  var prec = polozky('digest').filter(function(i){ return stav.precteno[i.path] && stav.precteno[i.path] < DNES; })
-    .sort(function(a, b){ return stav.precteno[b.path].localeCompare(stav.precteno[a.path]); });
+  var pr = stav().precteno;
+  var prec = polozky('digest').filter(function(i){ return pr[i.path] && pr[i.path] < DNES; })
+    .sort(function(a, b){ return pr[b.path].localeCompare(pr[a.path]); });
   if (!prec.length) return '';
   var html = await nactiHtml(prec[0]); if (!html) return '';
   var k = new DOMParser().parseFromString(html, 'text/html').querySelector('.karticka');
@@ -164,71 +172,61 @@ function info(i){
   if (i.type === 'digest') return '~' + (i.minut || 10) + ' min';
   return i.plates ? i.plates + ' listů' : '';
 }
-async function vykresli(){
-  if (!katalog){
-    $('ranni').innerHTML = '<div class="prazdno">Tady bude každé ráno čekat heslo z encyklopedie 21. století. '
-      + (zdroj.ma() ? 'Stiskni ↻ obnovit.' : 'Nejdřív připoj Dropbox v nastavení (⚙).') + '</div>';
-    $('regaly').innerHTML = ''; return;
-  }
-  var d = dnesniHeslo(), h;
-  if (d){
-    var hot = !!stav.precteno[d.path];
-    h = '<a class="rano' + (hot ? ' hotovo' : '') + '" href="#' + esc(d.path) + '"><div class="k">Dnešní heslo'
-      + (d.number ? ' · č. ' + d.number : '') + (hot ? ' · přečteno ✓' : '') + '</div><h2>' + esc(d.title) + '</h2><p>'
-      + esc(d.subtitle) + '</p><div class="meta"><span>' + info(d) + '</span><span>' + esc(d.field) + '</span></div></a>';
-  } else h = '<div class="prazdno">Všechna hesla jsou přečtená. Řekni Claudovi „dej mi do digestu …“ 🥥</div>';
-  $('ranni').innerHTML = h + await kartickaZMinula();
-  $('regaly').innerHTML = [['digest', 'Digest'], ['prurez', 'Průřezy'], ['ucebnice', 'Učebnice']].map(function(t){
-    var p = polozky(t[0]); if (!p.length) return '';
-    return '<section class="regal"><h3>' + t[1] + '</h3><ul>' + p.map(function(i){
-      return '<li class="' + (stav.precteno[i.path] ? 'precteno' : '') + '"><a href="#' + esc(i.path) + '"><b>' + esc(i.title)
-        + '</b><span>' + esc(i.subtitle || i.project) + '</span><i>' + esc(info(i)) + '</i></a></li>';
-    }).join('') + '</ul></section>';
-  }).join('');
+function seznam(p){
+  var pr = stav().precteno;
+  return '<ul>' + p.map(function(i){
+    return '<li class="' + (pr[i.path] ? 'precteno' : '') + '"><a href="#" data-cesta="' + esc(i.path) + '"><b>' + esc(i.title)
+      + '</b><span>' + esc(i.subtitle || i.project) + '</span><i>' + esc(info(i)) + '</i></a>'
+      + (DBX.token ? '<button class="kos" data-kos="' + esc(i.path) + '" title="Vyhodit z knihovny" aria-label="Vyhodit „' + esc(i.title) + '“">🗑</button>' : '')
+      + '</li>';
+  }).join('') + '</ul>';
 }
+async function vykresli(){
+  var trasa = location.hash.match(/^#police\/(\w+)/), typ = trasa && trasa[1];
+  if (!katalog){
+    $('obsah').innerHTML = '<div class="prazdno">Tady bude tvoje knihovna. '
+      + (zdroj.ma() ? 'Stiskni ↻ obnovit.' : 'Nejdřív připoj Dropbox v nastavení (⚙).') + '</div>';
+    return;
+  }
+  if (typ){   // celá jedna police
+    var nazev = (POLICE.find(function(p){ return p[0] === typ; }) || [, typ])[1], vse = polozky(typ);
+    $('obsah').innerHTML = '<section class="regal"><a class="zpet" href="#">← všechny police</a><h3>' + esc(nazev) + ' · ' + vse.length + '</h3>'
+      + (vse.length ? seznam(vse) : '<p class="prazdno">Prázdná police.</p>') + '</section>';
+    return;
+  }
+  var regaly = POLICE.map(function(t){
+    var p = polozky(t[0]); if (!p.length) return '';
+    return '<section class="regal"><h3>' + t[1] + (p.length > 3 ? ' <a href="#police/' + t[0] + '">vše (' + p.length + ') →</a>' : '')
+      + '</h3>' + seznam(p.slice(0, 3)) + '</section>';
+  }).join('');
+  $('obsah').innerHTML = (await kartickaZMinula()) + (regaly || '<div class="prazdno">Knihovna je prázdná. Řekni Claudovi, ať něco vyrobí 🥥</div>');
+}
+window.addEventListener('hashchange', vykresli);
 
-// ---- čtení: výrobek v rámu přes blob URL (stejný původ → pamatuje pozici, hlásí konec) ----
-var otevrena = null, blobUrl = null, posl = 0, casovac = null;
-var EINK_CSS = '<style id="ctecka-eink">*{animation:none!important;transition:none!important;box-shadow:none!important;'
-  + 'scroll-behavior:auto!important}html{filter:grayscale(1) contrast(1.15)}</style>';
+// ---- otevření výrobku: cti.html ho vezme z offline paměti a zobrazí jako celou stránku ----
 async function otevri(cesta){
   var it = katalog && katalog.items.find(function(i){ return i.path === cesta; });
-  if (!it){ location.hash = ''; return; }
-  var html = await nactiHtml(it);
-  if (!html){ hlas('„' + it.title + '“ není stažené a jsi offline.'); location.hash = ''; return; }
-  if (volby.eink) html = html.replace(/<head[^>]*>/i, function(m){ return m + EINK_CSS; });
-  if (volby.tema) html = html.replace(/<html([^>]*)>/i, '<html$1 data-theme="' + volby.tema + '">');
-  otevrena = it;
-  if (blobUrl) URL.revokeObjectURL(blobUrl);
-  blobUrl = URL.createObjectURL(new Blob([html], {type: 'text/html'}));
-  $('c-nazev').textContent = it.title; document.title = it.title;
-  $('cteni').classList.add('on'); $('c-hlava').classList.remove('skryt');
-  var ram = $('c-ram');
-  ram.onload = function(){ napoj(ram.contentWindow, it); };
-  ram.src = blobUrl;
+  if (!it) return;
+  if (!await nactiHtml(it)){ hlas('„' + it.title + '“ není stažené a jsi offline.'); return; }   // jistota, že je v cache
+  location.href = 'cti.html?c=' + encodeURIComponent(cesta);
 }
-function zavri(){
-  $('cteni').classList.remove('on'); $('c-ram').src = 'about:blank';
-  otevrena = null; document.title = 'Čtečka'; vykresli();
-}
-function napoj(w, it){
-  var pozice = cti('pozice', {});
+async function vyhod(cesta){
+  var it = katalog && katalog.items.find(function(i){ return i.path === cesta; });
+  if (!it || !confirm('Vyhodit „' + it.title + '“ z knihovny?\nSmaže se z Dropboxu na všech zařízeních (30 dní jde vrátit z koše na dropbox.com).')) return;
   try {
-    if (pozice[it.path]) setTimeout(function(){ w.scrollTo(0, pozice[it.path]); }, 120);
-    posl = 0;
-    w.addEventListener('scroll', function(){
-      var y = w.scrollY, doc = w.document.documentElement;
-      $('c-hlava').classList.toggle('skryt', y > posl && y > 80); posl = y;
-      clearTimeout(casovac);
-      casovac = setTimeout(function(){ var p = cti('pozice', {}); p[it.path] = Math.round(y); pis('pozice', p); }, 400);
-      if (y + w.innerHeight > doc.scrollHeight - 240) oznacPrecteno(it);
-    }, {passive: true});
-  } catch (e) {}
+    await DBX.smaz(cesta);
+    katalog.items = katalog.items.filter(function(i){ return i.path !== cesta; }); pis('katalog', katalog);
+    (await caches.open(CACHE)).delete(klic(it));
+    hlas('Vyhozeno: ' + it.title);
+  } catch (e) { hlas(e.message); }
+  vykresli();
 }
-window.addEventListener('message', function(e){ if (e.data && e.data.typ === 'precteno' && otevrena) oznacPrecteno(otevrena); });
-function trasa(){ var c = decodeURIComponent(location.hash.slice(1)); if (c) otevri(c); else if (otevrena) zavri(); }
-window.addEventListener('hashchange', trasa);
-$('c-zpet').addEventListener('click', function(){ location.hash = ''; });
+$('obsah').addEventListener('click', function(e){
+  var a = e.target.closest('[data-cesta]'), k = e.target.closest('[data-kos]');
+  if (a){ e.preventDefault(); otevri(a.dataset.cesta); }
+  else if (k){ e.preventDefault(); vyhod(k.dataset.kos); }
+});
+window.addEventListener('pageshow', function(e){ if (e.persisted) vykresli(); });   // návrat zpět z výrobku
 
 // ---- nastavení ----
 function nastaveniInfo(){
@@ -243,7 +241,7 @@ $('n-zavrit').addEventListener('click', function(){ $('nastaveni').close(); });
 $('n-eink').addEventListener('change', function(){ volby.eink = this.checked; pis('volby', volby); uplatniVolby(); });
 $('n-tema').addEventListener('change', function(){ volby.tema = this.value; pis('volby', volby); uplatniVolby(); });
 $('n-pripojit').addEventListener('click', function(){ DBX.prihlas(); });
-$('n-odpojit').addEventListener('click', function(){ DBX.odhlas(); nastaveniInfo(); });
+$('n-odpojit').addEventListener('click', function(){ DBX.odhlas(); nastaveniInfo(); vykresli(); });
 $('b-sync').addEventListener('click', synchronizuj);
 
 // ---- start ----
@@ -251,7 +249,7 @@ $('b-sync').addEventListener('click', synchronizuj);
   if ('serviceWorker' in navigator && !LOK) navigator.serviceWorker.register('sw.js').catch(function(){});
   var kod = new URLSearchParams(location.search).get('code');
   if (kod && C.dropboxKey){ try { await DBX.dokonci(kod); } catch (e) { hlas(e.message); } }
-  await vykresli(); trasa();
+  await vykresli();
   synchronizuj();
 })();
 })();
