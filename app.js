@@ -196,7 +196,7 @@ async function vykresli(){
   }
   var regaly = POLICE.map(function(t){
     var p = polozky(t[0]); if (!p.length) return '';
-    return '<section class="regal"><h3>' + t[1] + (p.length > 3 ? ' <a href="#police/' + t[0] + '">vše (' + p.length + ') →</a>' : '')
+    return '<section class="regal"><h3>' + t[1] + ' <a href="#police/' + t[0] + '">vše (' + p.length + ') →</a>'
       + '</h3>' + seznam(p.slice(0, 3)) + '</section>';
   }).join('');
   $('obsah').innerHTML = (await kartickaZMinula()) + (regaly || '<div class="prazdno">Knihovna je prázdná. Řekni Claudovi, ať něco vyrobí 🥥</div>');
