@@ -7,7 +7,7 @@
 var C = window.CTECKA || {};
 var LOK = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
 var CACHE = 'ctecka-knihovna-v1';
-var POLICE = [['digest', 'Digest'], ['prurez', 'Průřezy'], ['ucebnice', 'Učebnice']];
+var POLICE = [['digest', 'Digest'], ['prurez', 'Průřezy'], ['bestiar', 'Bestiáře'], ['ucebnice', 'Učebnice']];
 var $ = function(id){ return document.getElementById(id); };
 function iso(d){ return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 var DNES = iso(new Date());
@@ -173,6 +173,7 @@ async function kartickaZMinula(){
 function info(i){
   if (i.type === 'ucebnice') return i.pages ? Object.values(i.pages).pop() + ' stran' : '';
   if (i.type === 'digest') return (i.series ? 'díl ' + i.series.part + '/' + i.series.parts + ' · ' : '') + '~' + (i.minut || 10) + ' min';
+  if (i.type === 'bestiar') return i.games ? i.games + ' her' : '';
   return i.plates ? i.plates + ' listů' : '';
 }
 function seznam(p){
