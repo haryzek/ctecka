@@ -7,7 +7,13 @@
 var C = window.CTECKA || {};
 var LOK = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
 var CACHE = 'ctecka-knihovna-v1';
-var POLICE = [['digest', 'Digest'], ['prurez', 'Průřezy'], ['bestiar', 'Bestiáře'], ['ucebnice', 'Učebnice']];
+var POLICE_ZALOHA = [['digest', 'Digest'], ['prurez', 'Průřezy'], ['bestiar', 'Bestiáře'], ['ucebnice', 'Učebnice']];
+// police posílá katalog (vydej.py → shelves); typy, které katalog nezná, dostanou polici se svým jménem
+function police(){
+  var p = ((katalog && katalog.shelves) || POLICE_ZALOHA).slice(), zname = p.map(function(x){ return x[0]; });
+  ((katalog && katalog.items) || []).forEach(function(i){ if (zname.indexOf(i.type) < 0){ zname.push(i.type); p.push([i.type, i.type]); } });
+  return p;
+}
 var $ = function(id){ return document.getElementById(id); };
 function iso(d){ return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 var DNES = iso(new Date());
@@ -174,6 +180,7 @@ function info(i){
   if (i.type === 'ucebnice') return i.pages ? Object.values(i.pages).pop() + ' stran' : '';
   if (i.type === 'digest') return (i.series ? 'díl ' + i.series.part + '/' + i.series.parts + ' · ' : '') + '~' + (i.minut || 10) + ' min';
   if (i.type === 'bestiar') return i.games ? i.games + ' her' : '';
+  if (i.pages) return Object.values(i.pages).pop() + ' stran';
   return i.plates ? i.plates + ' listů' : '';
 }
 function seznam(p){
@@ -193,12 +200,12 @@ async function vykresli(){
     return;
   }
   if (typ){   // celá jedna police
-    var nazev = (POLICE.find(function(p){ return p[0] === typ; }) || [, typ])[1], vse = polozky(typ);
+    var nazev = (police().find(function(p){ return p[0] === typ; }) || [, typ])[1], vse = polozky(typ);
     $('obsah').innerHTML = '<section class="regal"><a class="zpet" href="#">← všechny police</a><h3>' + esc(nazev) + ' · ' + vse.length + '</h3>'
       + (vse.length ? seznam(vse) : '<p class="prazdno">Prázdná police.</p>') + '</section>';
     return;
   }
-  var regaly = POLICE.map(function(t){
+  var regaly = police().map(function(t){
     var p = polozky(t[0]); if (!p.length) return '';
     return '<section class="regal"><h3>' + t[1] + ' <a href="#police/' + t[0] + '">vše (' + p.length + ') →</a>'
       + '</h3>' + seznam(p.slice(0, 3)) + '</section>';
