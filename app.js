@@ -7,7 +7,7 @@
 var C = window.CTECKA || {};
 var LOK = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
 var CACHE = 'ctecka-knihovna-v1';
-var POLICE_ZALOHA = [['digest', 'Digest'], ['prurez', 'Průřezy'], ['bestiar', 'Bestiáře'], ['ucebnice', 'Učebnice']];
+var POLICE_ZALOHA = [['digest', 'Digest'], ['kabinet', 'Kabinety'], ['prurez', 'Průřezy'], ['bestiar', 'Bestiáře'], ['ucebnice', 'Učebnice']];
 // police posílá katalog (vydej.py → shelves); typy, které katalog nezná, dostanou polici se svým jménem
 function police(){
   var p = ((katalog && katalog.shelves) || POLICE_ZALOHA).slice(), zname = p.map(function(x){ return x[0]; });
@@ -180,6 +180,7 @@ function info(i){
   if (i.type === 'ucebnice') return i.pages ? Object.values(i.pages).pop() + ' stran' : '';
   if (i.type === 'digest') return (i.series ? 'díl ' + i.series.part + '/' + i.series.parts + ' · ' : '') + '~' + (i.minut || 10) + ' min';
   if (i.type === 'bestiar') return i.games ? i.games + ' her' : '';
+  if (i.type === 'kabinet') return (i.boxu ? i.boxu + ' zajímavostí · ' : '') + '~' + (i.minut || 15) + ' min';
   if (i.pages) return Object.values(i.pages).pop() + ' stran';
   return i.plates ? i.plates + ' listů' : '';
 }
