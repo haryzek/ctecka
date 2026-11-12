@@ -1,6 +1,6 @@
 /* Service worker čtečky: skořápka apky a fonty offline. Knihovnu (výrobky) si do vlastní cache
    ukládá app.js. Při změně skořápky zvedni VERZE. */
-var VERZE = 'ctecka-skorapka-9';
+var VERZE = 'ctecka-skorapka-10';
 var SKORAPKA = ['./', 'index.html', 'cti.html', 'app.js', 'nastaveni.js', 'manifest.webmanifest', 'ikona.svg', 'ikona-192.png', 'ikona-512.png'];
 
 self.addEventListener('install', function(e){
@@ -24,9 +24,10 @@ self.addEventListener('fetch', function(e){
     }));
     return;
   }
-  // skořápka: síť napřed (ať se nová verze projeví), offline z cache
+  // skořápka: síť napřed (ať se nová verze projeví), offline z cache. no-cache = zeptat se serveru
+  // i přes HTTP cache prohlížeče (GitHub Pages posílá max-age=600, jinak 10 min po nasazení stará verze)
   if (url.origin === location.origin){
-    e.respondWith(fetch(e.request).then(function(o){
+    e.respondWith(fetch(e.request.url, {cache: 'no-cache', credentials: 'same-origin'}).then(function(o){
       if (o.ok){ var k = o.clone(); caches.open(VERZE).then(function(c){ c.put(e.request, k); }); }
       return o;
     }).catch(function(){ return caches.match(e.request, {ignoreSearch: true}); }));
