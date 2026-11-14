@@ -69,11 +69,58 @@ dialog label{display:flex;gap:10px;align-items:center;margin:10px 0;font:16px va
 dialog .rada{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
 dialog p{font-size:15px;color:var(--ink2)}
 
+/* ---- ＋ zadání (zadani.js) ---- */
+.zad h2{font:400 28px/1.15 var(--display);margin:14px 0 12px}
+.zad h3{font:500 13px var(--label);letter-spacing:.18em;text-transform:uppercase;color:var(--acc);margin:22px 0 8px}
+.zad h4{font:500 15px var(--label);margin:18px 0 6px}
+.zad i{font-style:normal;color:var(--ink2);font-weight:400}
+.z-pole{display:block;margin:12px 0}
+.z-pole span{display:block;font:500 15px var(--label);margin-bottom:4px}
+.zad textarea,.zad input,.zad select{width:100%;font:15.5px/1.4 var(--body);color:var(--ink);background:var(--paper);border:1px solid var(--rule);border-radius:10px;padding:9px 11px}
+.zad textarea{resize:vertical}
+.z-dlazdice{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}
+.z-dlazdice .dl{display:flex;flex-direction:column;align-items:center;gap:2px;border-radius:12px;padding:10px 6px;min-height:72px;background:var(--paper)}
+.z-dlazdice .dl b{font-size:22px;line-height:1}
+.z-dlazdice .dl span{font:14px/1.2 var(--label);text-align:center}
+.zad [aria-pressed=true]{border:2px solid var(--ink);font-weight:600;background:var(--soft)}
+.z-doladit{margin-top:16px;border:1px solid var(--rule);border-radius:12px;padding:4px 14px 14px;background:var(--paper)}
+.z-doladit>summary{cursor:pointer;padding:10px 0;font:500 16px var(--label)}
+.z-param{margin:10px 0}
+.z-nazev{display:block;font:500 14px var(--label);color:var(--ink2);margin-bottom:4px}
+.z-seg,.z-cipy{display:flex;flex-wrap:wrap;gap:6px}
+.z-seg button,.z-cipy button{min-height:36px;padding:5px 12px;font-size:14px;background:transparent}
+.z-cipy [data-stav=ano]{border:2px solid var(--ink);font-weight:600}
+.z-cipy [data-stav=ano]::after{content:" ✓"}
+.z-cipy [data-stav=ne]{text-decoration:line-through;color:var(--ink2)}
+.z-rozsah{display:flex;gap:8px}.z-rozsah input{max-width:7rem}
+.z-slider{display:grid;grid-template-columns:7.5rem minmax(0,1fr) 3.4rem 2.2rem;align-items:center;gap:8px;margin:6px 0}
+.z-slider .z-nazev{margin:0;color:var(--ink)}
+.z-slider.maly .z-nazev{font-size:13px;color:var(--ink2)}
+.z-slider input{padding:0;border:0;background:none;accent-color:var(--ink)}
+.z-slider.auto input{opacity:.35}
+.z-slider output{font:14px var(--label);text-align:right;color:var(--ink2)}
+.z-reset{min-height:30px;padding:0 6px;background:none}
+.z-skupina details{margin:0 0 8px 12px}
+.z-skupina summary{cursor:pointer;font:13px var(--label);color:var(--ink2)}
+.z-preset-uloz{display:flex;gap:8px;margin-top:16px}
+.z-rada{display:flex;gap:8px;flex-wrap:wrap}.z-rada select{flex:1 1 12rem}.z-rada input{flex:1 1 8rem}
+.z-akce{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
+.z-pozn,.z-stav{font:14px var(--label);color:var(--ink2)}
+.z-zprava{border-left:3px solid var(--acc2);padding-left:10px}
+.z-otazka{border-top:1px solid var(--rule);padding-top:8px;margin-top:10px}
+.z-otazka p{margin:0 0 8px}
+.z-otazka textarea{margin-top:8px}
+/* ---- řady a čtení napříč (rady.js) ---- */
+.napric-btn{display:inline-block;font:500 15px var(--label);color:var(--ink);border:1px solid var(--rule);border-radius:999px;padding:8px 14px;text-decoration:none;background:var(--soft)}
+.napric h4{font:500 15px var(--label);margin:18px 0 4px}
+.napric-jadra li a{grid-template-columns:minmax(0,1fr) auto}
+.napric-jadra li span{font-size:15.5px;line-height:1.45;color:var(--ink)}
+
 </style>
 </head>
 <body>
 <main id="domov">
-  <div class="lista"><span>Čtečka</span><span class="ovl"><button id="b-sync" title="Stáhnout novinky">↻ obnovit</button><button id="b-nast" title="Nastavení">⚙</button></span></div>
+  <div class="lista"><span>Čtečka</span><span class="ovl"><button id="b-zadani" title="Nové zadání nebo nápad">＋ zadání</button><button id="b-sync" title="Stáhnout novinky">↻ obnovit</button><button id="b-nast" title="Nastavení">⚙</button></span></div>
   <h1>Ráno <em>pro Boba</em></h1>
   <p class="datum" id="datum"></p>
   <div id="obsah"></div>
@@ -89,6 +136,8 @@ dialog p{font-size:15px;color:var(--ink2)}
 </dialog>
 
 <script src="nastaveni.js"></script>
+<script src="zadani.js"></script>
+<script src="rady.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

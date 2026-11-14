@@ -120,8 +120,11 @@ async function synchronizuj(){
       katalog.items = katalog.items.filter(function(i){ return lezi.has(i.path.toLowerCase()); });
       await synchronizujStav();
       await synchronizujPrani();
+      await synchronizujSchranku('zadani.json', 'zadani');       // ＋ zadání (zadani.js) ↔ Claude (nastroje/zadani)
+      await synchronizujSchranku('presety-bob.json', 'presety-bob');   // Bobovy vlastní presety
     }
     pis('katalog', katalog);
+    try { var rp = await zdroj.soubor('presety.json'); if (rp) pis('presety', await rp.json()); } catch (e) {}
     var cache = await caches.open(CACHE), nove = 0, chyb = 0;
     for (var i = 0; i < katalog.items.length; i++){
       var it = katalog.items[i];
@@ -160,6 +163,20 @@ async function synchronizujPrani(){
   Object.keys(lok.items).forEach(function(id){ if (!vzd[id]) vzd[id] = lok.items[id]; });
   pis('prani', {items: vzd});
   if (nahrat) await DBX.nahraj('prani.json', JSON.stringify({items: vzd}, null, 1));
+}
+// obecná schránka {items: {id: {…, zmeneno}}} ↔ Dropbox: sloučení podle id, vyhrává novější změna
+// (Claude při zápisu taky nastavuje zmeneno). Na disku čtečky je pod ctecka:<klic>.
+async function synchronizujSchranku(soubor, klic){
+  var lok = cti(klic, null) || {}, r = await DBX.stahni(soubor), vzd = r ? ((await r.json()).items || {}) : {}, nahrat = false;
+  lok.items = lok.items || {};
+  Object.keys(lok.items).forEach(function(id){
+    var a = lok.items[id], b = vzd[id];
+    if (!b || (a.zmeneno || 0) > (b.zmeneno || 0)){ vzd[id] = a; nahrat = true; }
+  });
+  var cerstve = cti(klic, null) || {};   // mezitím zapsané v jiné kartě
+  Object.keys(cerstve.items || {}).forEach(function(id){ if (!vzd[id]) vzd[id] = cerstve.items[id]; });
+  pis(klic, {items: vzd});
+  if (nahrat) await DBX.nahraj(soubor, JSON.stringify({items: vzd}, null, 1));
 }
 function praniU(cesta){
   var x = praniLok().items, ceka = 0, spl = 0;
@@ -216,6 +233,10 @@ function seznam(p){
   }).join('') + '</ul>';
 }
 async function vykresli(){
+  // moduly (zadani.js, rady.js) mají vlastní trasy: #zadani…, #rada/…, #napric/…
+  for (var mi = 0; mi < MODULY.length; mi++){
+    if (MODULY[mi].trasa){ var h = await MODULY[mi].trasa(location.hash); if (h != null){ $('obsah').innerHTML = h; MODULY[mi].poVykresleni && MODULY[mi].poVykresleni(); return; } }
+  }
   var trasa = location.hash.match(/^#police\/(\w+)/), typ = trasa && trasa[1];
   if (!katalog){
     $('obsah').innerHTML = '<div class="prazdno">Tady bude tvoje knihovna. '
@@ -233,7 +254,13 @@ async function vykresli(){
     return '<section class="regal"><h3>' + t[1] + ' <a href="#police/' + t[0] + '">vše (' + p.length + ') →</a>'
       + '</h3>' + seznam(p.slice(0, 3)) + '</section>';
   }).join('');
-  $('obsah').innerHTML = (await kartickaZMinula()) + (regaly || '<div class="prazdno">Knihovna je prázdná. Řekni Claudovi, ať něco vyrobí 🥥</div>');
+  var nahore = '', dole = '';
+  for (var mj = 0; mj < MODULY.length; mj++){
+    if (MODULY[mj].domov) nahore += await MODULY[mj].domov();
+    if (MODULY[mj].police) dole += await MODULY[mj].police();
+  }
+  $('obsah').innerHTML = nahore + (await kartickaZMinula()) + dole + (regaly || '<div class="prazdno">Knihovna je prázdná. Řekni Claudovi, ať něco vyrobí 🥥</div>');
+  MODULY.forEach(function(m){ m.poVykresleni && m.poVykresleni(); });
 }
 window.addEventListener('hashchange', vykresli);
 
@@ -261,6 +288,7 @@ async function vyhod(cesta){
   vykresli();
 }
 $('obsah').addEventListener('click', function(e){
+  for (var i = 0; i < MODULY.length; i++){ if (MODULY[i].klik && MODULY[i].klik(e)) return; }
   var a = e.target.closest('[data-cesta]'), k = e.target.closest('[data-kos]');
   if (a){ e.preventDefault(); otevri(a.dataset.cesta); }
   else if (k){ e.preventDefault(); vyhod(k.dataset.kos); }
@@ -282,6 +310,15 @@ $('n-tema').addEventListener('change', function(){ volby.tema = this.value; pis(
 $('n-pripojit').addEventListener('click', function(){ DBX.prihlas(); });
 $('n-odpojit').addEventListener('click', function(){ DBX.odhlas(); nastaveniInfo(); vykresli(); });
 $('b-sync').addEventListener('click', synchronizuj);
+
+// ---- moduly: zadani.js, rady.js (načtené před app.js) dostanou API čtečky ----
+var MODULY = window.CTECKA_MODULY || [];
+var API = {
+  $: $, esc: esc, cti: cti, pis: pis, hlas: hlas, iso: iso, DNES: DNES, DBX: DBX, zdroj: zdroj,
+  katalog: function(){ return katalog; }, vykresli: vykresli, nactiHtml: nactiHtml, otevri: otevri,
+  info: info, seznam: seznam, synchronizuj: synchronizuj
+};
+MODULY.forEach(function(m){ m.init && m.init(API); });
 
 // ---- start ----
 (async function(){

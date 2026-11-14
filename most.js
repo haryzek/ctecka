@@ -14,7 +14,10 @@ function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(z
 function el(tag, cls, html){ var e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
 
 // ---- pozice a přečteno ----
-var p = c('pozice', {})[P]; if (p) setTimeout(function(){ scrollTo(0, p); }, 150);
+// kotva z čtení napříč (cti.html?c=…#o-hlavni-otazka) má přednost před zapamatovanou pozicí
+var kotvaEl = location.hash.length > 1 && document.getElementById(decodeURIComponent(location.hash.slice(1)));
+if (kotvaEl){ var cil = kotvaEl.hidden ? kotvaEl.parentElement : kotvaEl; setTimeout(function(){ cil.scrollIntoView({block: 'start'}); }, 150); }
+else { var p = c('pozice', {})[P]; if (p) setTimeout(function(){ scrollTo(0, p); }, 150); }
 var t;
 addEventListener('scroll', function(){
   clearTimeout(t); t = setTimeout(function(){ var q = c('pozice', {}); q[P] = Math.round(scrollY); w('pozice', q); }, 400);
