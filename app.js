@@ -119,6 +119,7 @@ async function synchronizuj(){
       var lezi = await DBX.soubory();   // co Bob smazal v Dropboxu (nebo košem ve čtečce), už neukazovat
       katalog.items = katalog.items.filter(function(i){ return lezi.has(i.path.toLowerCase()); });
       await synchronizujStav();
+      await synchronizujPrani();
     }
     pis('katalog', katalog);
     var cache = await caches.open(CACHE), nove = 0, chyb = 0;
@@ -144,6 +145,27 @@ async function synchronizujStav(){   // sjednotit „přečteno“ mezi zaříze
   Object.keys(s.precteno).forEach(function(k){ if (vzdaleny[k] !== s.precteno[k]) zmena = true; });
   pis('stav', s);
   if (zmena) await DBX.nahraj('stav.json', JSON.stringify({precteno: s.precteno}));
+}
+// přání (most.js je sbírá při čtení do ctecka:prani) ↔ prani.json v Dropboxu, kde je Claude čte a značí splněná.
+// Sloučení podle id: vyhrává pokročilejší stav (čeká < zrušeno < splněno), při shodě novější změna.
+var PORADI = {ceka: 0, zruseno: 1, splneno: 2};
+function praniLok(){ var x = cti('prani', null) || {}; x.items = x.items || {}; return x; }
+async function synchronizujPrani(){
+  var lok = praniLok(), r = await DBX.stahni('prani.json'), vzd = r ? ((await r.json()).items || {}) : {}, nahrat = false;
+  Object.keys(lok.items).forEach(function(id){
+    var a = lok.items[id], b = vzd[id];
+    if (!b || PORADI[a.stav] > PORADI[b.stav] || (a.stav === b.stav && (a.zmeneno || 0) > (b.zmeneno || 0))){ vzd[id] = a; nahrat = true; }
+  });
+  lok = praniLok();   // most.js mohl mezitím zapsat (jiná karta) – nepřepsat mu nová přání
+  Object.keys(lok.items).forEach(function(id){ if (!vzd[id]) vzd[id] = lok.items[id]; });
+  pis('prani', {items: vzd});
+  if (nahrat) await DBX.nahraj('prani.json', JSON.stringify({items: vzd}, null, 1));
+}
+function praniU(cesta){
+  var x = praniLok().items, ceka = 0, spl = 0;
+  Object.keys(x).forEach(function(id){ var i = x[id]; if (i.cesta !== cesta) return;
+    if (i.stav === 'ceka') ceka++; else if (i.stav === 'splneno' && i.splneno && (Date.now() - new Date(i.splneno + 'T12:00:00')) / 864e5 <= 14) spl++; });
+  return (ceka ? ' · 🥥 ' + ceka + ' čeká' : '') + (spl ? ' · 🥥 ' + spl + ' splněno' : '');
 }
 async function doCache(cache, it){
   var f = await zdroj.soubor(it.path); if (!f) return false;
@@ -188,7 +210,7 @@ function seznam(p){
   var pr = stav().precteno;
   return '<ul>' + p.map(function(i){
     return '<li class="' + (pr[i.path] ? 'precteno' : '') + '"><a href="#" data-cesta="' + esc(i.path) + '"><b>' + esc(i.title)
-      + '</b><span>' + esc(i.subtitle || i.project) + '</span><i>' + esc(info(i)) + '</i></a>'
+      + '</b><span>' + esc(i.subtitle || i.project) + '</span><i>' + esc(info(i) + praniU(i.path)) + '</i></a>'
       + (DBX.token ? '<button class="kos" data-kos="' + esc(i.path) + '" title="Vyhodit z knihovny" aria-label="Vyhodit „' + esc(i.title) + '“">🗑</button>' : '')
       + '</li>';
   }).join('') + '</ul>';
@@ -226,6 +248,11 @@ async function vyhod(cesta){
   var it = katalog && katalog.items.find(function(i){ return i.path === cesta; });
   if (!it || !confirm('Vyhodit „' + it.title + '“ z knihovny?\nSmaže se z Dropboxu na všech zařízeních (30 dní jde vrátit z koše na dropbox.com).')) return;
   try {
+    // čekající přání musí odjet dřív, než výrobek zmizí (Claude ho pak splní z originálu na disku)
+    var x = praniLok().items;
+    if (Object.keys(x).some(function(id){ return x[id].cesta === cesta && x[id].stav === 'ceka'; })){
+      hlas('Posílám přání…'); await synchronizujPrani();
+    }
     await DBX.smaz(cesta);
     katalog.items = katalog.items.filter(function(i){ return i.path !== cesta; }); pis('katalog', katalog);
     (await caches.open(CACHE)).delete(klic(it));

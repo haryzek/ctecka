@@ -12,7 +12,7 @@
 <script>
 /* Čtení jednoho výrobku jako celé stránky (prohlížeč pak při rolování schová adresní řádek).
    Výrobek se vezme z offline paměti čtečky (Cache Storage, plní ji app.js), přidá se e-ink
-   a téma podle nastavení a „most“, který si pamatuje pozici a značí přečteno. Zpět = šipka zpět. */
+   a téma podle nastavení a „most“ (most.js): pozice, přečteno, ← police a přání. Zpět = šipka zpět. */
 (async function(){
   function cti(k, d){ try { var v = localStorage.getItem('ctecka:' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
   var cesta = new URLSearchParams(location.search).get('c') || '';
@@ -24,22 +24,8 @@
   if (volby.eink) html = html.replace(/<head[^>]*>/i, function(m){ return m + '<style>*{animation:none!important;transition:none!important;'
     + 'box-shadow:none!important;scroll-behavior:auto!important}html{filter:grayscale(1) contrast(1.15)}</style>'; });
   if (volby.tema) html = html.replace(/<html([^>]*)>/i, '<html$1 data-theme="' + volby.tema + '">');
-  var most = '<script>(function(){var K="ctecka:",P=' + JSON.stringify(cesta) + ';'
-    + 'function c(k,d){try{var v=localStorage.getItem(K+k);return v?JSON.parse(v):d}catch(e){return d}}'
-    + 'function w(k,v){try{localStorage.setItem(K+k,JSON.stringify(v))}catch(e){}}'
-    + 'function dnes(){var d=new Date();return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2)}'
-    + 'var p=c("pozice",{})[P];if(p)setTimeout(function(){scrollTo(0,p)},150);'
-    + 'var t;addEventListener("scroll",function(){clearTimeout(t);t=setTimeout(function(){var q=c("pozice",{});q[P]=Math.round(scrollY);w("pozice",q)},400);'
-    + 'if(scrollY+innerHeight>document.documentElement.scrollHeight-240){var s=c("stav",{})||{};s.precteno=s.precteno||{};'
-    + 'if(!s.precteno[P]){s.precteno[P]=dnes();w("stav",s)}}},{passive:true});'
-    // tlačítko zpět na polici (vlevo dole, pod palcem): při rolování dolů se schová, při rolování nahoru vrátí
-    + 'var b=document.createElement("a");b.id="ctecka-zpet";b.href="./";b.textContent="← police";'
-    + 'b.style.cssText="position:fixed;z-index:2147483000;left:max(10px,env(safe-area-inset-left,0px));bottom:calc(12px + env(safe-area-inset-bottom,0px));'
-    + 'font:500 14px system-ui,sans-serif;padding:7px 12px;border-radius:999px;text-decoration:none;color:#1f1c17;'
-    + 'background:rgba(251,248,241,.88);border:1px solid rgba(0,0,0,.15);box-shadow:0 2px 8px rgba(0,0,0,.12);transition:transform .25s ease,opacity .25s ease";'
-    + 'b.onclick=function(e){if(document.referrer.indexOf(location.origin+location.pathname.replace(/cti\.html$/,""))===0&&history.length>1){e.preventDefault();history.back()}};'
-    + 'document.body.appendChild(b);var y0=scrollY;addEventListener("scroll",function(){var y=scrollY,s=y>y0&&y>120;'
-    + 'b.style.transform=s?"translateY(70px)":"none";b.style.opacity=s?"0":"1";y0=y},{passive:true});})();<\/script>';
+  // most (pozice, přečteno, ← police, přání, lajny splněných přání) žije v most.js
+  var most = '<script>window.CTECKA_CESTA=' + JSON.stringify(cesta).replace(/</g, '\\u003c') + ';<\/script><script src="most.js"><\/script>';
   html = /<\/body>/i.test(html) ? html.replace(/<\/body>(?![\s\S]*<\/body>)/i, most + '</body>') : html + most;
   document.open(); document.write(html); document.close();
 })();
