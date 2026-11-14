@@ -110,6 +110,26 @@ dialog p{font-size:15px;color:var(--ink2)}
 .z-otazka{border-top:1px solid var(--rule);padding-top:8px;margin-top:10px}
 .z-otazka p{margin:0 0 8px}
 .z-otazka textarea{margin-top:8px}
+.z-osn-lista{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:10px 0 6px}
+.z-osn-lista span{font:14px var(--label);color:var(--ink2);margin-right:4px}
+.z-osn-lista button{min-height:32px;padding:3px 10px;font-size:13px;background:transparent}
+.z-casti{list-style:none;margin:0;padding:0;counter-reset:cast}
+.z-cast{border-top:1px solid var(--rule);padding:8px 0;counter-increment:cast}
+.z-cast.vyp .z-cast-hlava b{color:var(--ink2);text-decoration:line-through}
+.z-cast-hlava{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;cursor:pointer}
+.z-cast-hlava input{width:22px;height:22px;margin:0;accent-color:var(--ink)}
+.z-cast-hlava b{font:500 15.5px var(--label)}
+.z-cast-hlava b::before{content:counter(cast) ". ";color:var(--ink2);font-weight:400}
+.z-cast-hlava i{font:12px var(--label);color:var(--ink2)}
+.z-hk{display:grid;grid-template-columns:7.5rem minmax(0,1fr) auto;gap:8px;align-items:center;margin:6px 0 0 30px}
+.z-hk>span{font:13px var(--label);color:var(--ink2)}
+.z-hk input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
+.z-hk output{font:14px var(--label);min-width:2rem;text-align:right}
+.z-hk .z-seg,.z-hk .z-cipy{grid-column:2/4;gap:5px}
+.z-hk .z-seg button,.z-hk .z-cipy button{min-height:32px;padding:3px 10px;font-size:13px}
+.z-otazky{margin:6px 0 0 30px}
+.z-otazky summary{cursor:pointer;font:13px var(--label);color:var(--ink2)}
+.z-otazky p{font-size:14px;color:var(--ink2);margin:4px 0}
 /* ---- řady a čtení napříč (rady.js) ---- */
 .napric-btn{display:inline-block;font:500 15px var(--label);color:var(--ink);border:1px solid var(--rule);border-radius:999px;padding:8px 14px;text-decoration:none;background:var(--soft)}
 .napric h4{font:500 15px var(--label);margin:18px 0 4px}

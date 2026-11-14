@@ -76,7 +76,9 @@ function htmlFormulare(){
   var aparat = '<div class="z-cipy">' + S.aparat.map(function(x){
     var v = ap[x[0]]; return '<button type="button" data-aparat="' + x[0] + '" data-stav="' + (v === true ? 'ano' : v === false ? 'ne' : 'auto') + '">' + esc(x[1]) + '</button>';
   }).join('') + '</div>';
-  var osnovaTxt = osnovaText(d.osnova);
+  var zv = osnova(d.osnova_id), osnovaHtml;
+  if (zv){ pripravNastaveni(zv); osnovaHtml = htmlOsnovy(zv); }
+  else osnovaHtml = '<textarea id="z-osnova" rows="' + Math.min(12, Math.max(4, (d.osnova || []).length + 1)) + '" placeholder="Jedna část na řádek, „Název: co v ní“&#10;Biografie: stručně, s dobou&#10;Hlavní otázka: co mu krouží hlavou">' + esc(osnovaText(d.osnova)) + '</textarea>';
   var osnovaOpt = '<option value="">žádná / vlastní</option>' + osnovy().map(function(o){
     return '<option value="' + esc(o.id) + '"' + (d.osnova_id === o.id ? ' selected' : '') + '>' + esc(o.nazev) + ' (' + casti((o.casti || []).length) + ')</option>'; }).join('');
   var radyOpt = '<option value="">žádná</option>' + rady().map(function(x){ return '<option value="' + esc(x.id) + '"' + (form.rada && form.rada.id === x.id ? ' selected' : '') + '>' + esc(x.nazev) + (x.n ? ' (' + x.n + ')' : '') + '</option>'; }).join('')
@@ -90,8 +92,7 @@ function htmlFormulare(){
     + '<h4>Prvky <i>(kolik čeho; auto = podle mě)</i></h4>' + prvky
     + '<h4>Aparát <i>(ťukáním auto → ano → ne)</i></h4>' + aparat
     + '<h4>Osnova <i>(stejné části u každého dílu řady)</i></h4>'
-    + '<select id="z-osnova-vyber">' + osnovaOpt + '</select>'
-    + '<textarea id="z-osnova" rows="' + Math.min(12, Math.max(4, (d.osnova || []).length + 1)) + '" placeholder="Jedna část na řádek, „Název: co v ní“&#10;Biografie: stručně, s dobou&#10;Hlavní otázka: co mu krouží hlavou">' + esc(osnovaTxt) + '</textarea>'
+    + '<select id="z-osnova-vyber">' + osnovaOpt + '</select>' + osnovaHtml
     + '<div class="z-preset-uloz"><input id="z-osnova-nazev" placeholder="název nové osnovy"><button type="button" id="z-osnova-uloz">Uložit jako novou osnovu</button></div>'
     + '<div class="z-preset-uloz"><input id="z-preset-nazev" placeholder="název presetu, např. Psychoanalytik"><button type="button" id="z-preset-uloz">Uložit jako preset</button></div>'
     + '</details>'
@@ -102,6 +103,56 @@ function htmlFormulare(){
     + '<input id="z-poradi" type="number" min="1" inputmode="numeric" placeholder="pořadí" value="' + esc(form.poradi) + '"' + (form.rada ? '' : ' hidden') + '></div>'
     + '<div class="z-akce"><button type="button" class="hlavni" id="z-odeslat">Odeslat zadání</button></div>'
     + '<p class="z-pozn">Odjede při ↻ obnovit, stejně jako přání. Pak mi u počítače řekni „vyřiď zadání“.</p></section>';
+}
+// ---- interaktivní osnova z knihovny: zaškrtnutí částí + hejblátka každé části (s výchozími hodnotami) ----
+function pripravNastaveni(zv){
+  var d = form.definice, n = d.osnova_nastaveni = d.osnova_nastaveni || {}, puvodni = (d.osnova || []).map(function(c){ return c.klic; });
+  (zv.casti || []).forEach(function(c){
+    var x = n[c.klic] = n[c.klic] || {zap: !puvodni.length || puvodni.indexOf(c.klic) >= 0};
+    (c.hejblatka || []).forEach(function(h){ if (x[h.klic] === undefined) x[h.klic] = kopie(h.vychozi); });
+  });
+}
+function prepocitejOsnovu(){   // definice.osnova = zapnuté části s nastavením (to čte Claude)
+  var d = form.definice, zv = osnova(d.osnova_id); if (!zv) return;
+  pripravNastaveni(zv);
+  d.osnova = (zv.casti || []).filter(function(c){ return d.osnova_nastaveni[c.klic].zap; }).map(function(c){
+    var x = kopie(d.osnova_nastaveni[c.klic]); delete x.zap; return {klic: c.klic, nazev: c.nazev, nastaveni: x};
+  });
+}
+function htmlHejblatka(c, x){
+  return (c.hejblatka || []).map(function(h){
+    var v = x[h.klic], att = ' data-cast="' + esc(c.klic) + '" data-hk="' + esc(h.klic) + '"';
+    if (h.typ === 'cislo') return '<div class="z-hk"><span>' + esc(h.nazev) + '</span><input type="range" min="' + h.min + '" max="' + h.max + '" step="' + (h.krok || 1) + '" value="' + v + '" data-osn-cis' + att + ' aria-label="' + esc(c.nazev + ' – ' + h.nazev) + '"><output>' + v + '</output></div>';
+    if (h.typ === 'stupne') return '<div class="z-hk"><span>' + esc(h.nazev) + '</span><div class="z-seg">' + h.moznosti.map(function(m){
+      return '<button type="button" data-osn-st data-v="' + esc(m[0]) + '"' + att + ' aria-pressed="' + (v === m[0]) + '">' + esc(m[1]) + '</button>'; }).join('') + '</div></div>';
+    if (h.typ === 'vyber') return '<div class="z-hk"><span>' + esc(h.nazev) + '</span><div class="z-cipy">' + h.moznosti.map(function(m){
+      return '<button type="button" data-osn-vyb data-v="' + esc(m[0]) + '"' + att + ' aria-pressed="' + ((v || []).indexOf(m[0]) >= 0) + '">' + esc(m[1]) + '</button>'; }).join('') + '</div></div>';
+    return '';
+  }).join('');
+}
+function htmlOsnovy(zv){
+  var n = form.definice.osnova_nastaveni, zap = (zv.casti || []).filter(function(c){ return n[c.klic].zap; }).length;
+  return '<div class="z-osn-lista"><span>' + zap + ' z ' + casti((zv.casti || []).length) + '</span>'
+    + '<button type="button" data-osn-vse="jadro">vše na jádro</button><button type="button" data-osn-vse="standard">vše standard</button><button type="button" data-osn-vse="plne">vše plně</button>'
+    + '<button type="button" data-osn-zap="1">zapnout vše</button><button type="button" data-osn-zap="0">vypnout vše</button></div>'
+    + '<ol class="z-casti">' + (zv.casti || []).map(function(c){
+      var x = n[c.klic];
+      return '<li class="z-cast' + (x.zap ? '' : ' vyp') + '"><label class="z-cast-hlava"><input type="checkbox" data-osn-zap-cast="' + esc(c.klic) + '"' + (x.zap ? ' checked' : '') + '><b>' + esc(c.nazev) + '</b>' + (c.otazka_bob ? '<i>' + esc(c.otazka_bob) + '</i>' : '') + '</label>'
+        + (x.zap ? htmlHejblatka(c, x) + (c.otazky ? '<details class="z-otazky"><summary>otázky</summary><p>' + esc(c.otazky) + '</p></details>' : '') : '') + '</li>';
+    }).join('') + '</ol>';
+}
+function klikOsnova(t){
+  var b, d = form.definice, n = d.osnova_nastaveni, zv = osnova(d.osnova_id);
+  if (!zv) return false;
+  if ((b = t.closest('[data-osn-st]'))){ n[b.dataset.cast][b.dataset.hk] = b.dataset.v; prepocitejOsnovu(); prekresli(); return true; }
+  if ((b = t.closest('[data-osn-vyb]'))){
+    var a = n[b.dataset.cast][b.dataset.hk] = n[b.dataset.cast][b.dataset.hk] || [], i = a.indexOf(b.dataset.v);
+    if (i >= 0) a.splice(i, 1); else a.push(b.dataset.v);
+    prepocitejOsnovu(); prekresli(); return true;
+  }
+  if ((b = t.closest('[data-osn-vse]'))){ Object.keys(n).forEach(function(k){ if ('rozsah' in n[k]) n[k].rozsah = b.dataset.osnVse; }); prepocitejOsnovu(); prekresli(); return true; }
+  if ((b = t.closest('[data-osn-zap]'))){ Object.keys(n).forEach(function(k){ n[k].zap = b.dataset.osnZap === '1'; }); prepocitejOsnovu(); prekresli(); return true; }
+  return false;
 }
 function nastavCestu(cesta, hodnota){   // 'prvky.text' | 'detail.hracka'
   var d = form.definice, c = cesta.split('.');
@@ -116,13 +167,12 @@ function naplnTexty(){   // texty z formuláře do stavu (před překreslením a
   form.otevreno = document.querySelector('.z-doladit').open;
   var n = parseInt($('z-rozsah-n').value, 10), j = $('z-rozsah-j').value;
   if (n || j){ d.rozsah = {}; if (j) d.rozsah.jednotka = j; if (n) d.rozsah.hodnota = n; } else delete d.rozsah;
-  var os = ctiOsnovu($('z-osnova').value), zv = osnova(d.osnova_id);
-  // upravená vybraná osnova přestává být „ta uložená“ – zůstane jako vlastní (klíče částí drží, co jde)
-  if (zv && osnovaText(zv.casti) !== osnovaText(os)){
-    delete d.osnova_id;
-    os.forEach(function(c){ var p = (zv.casti || []).find(function(x){ return x.nazev === c.nazev; }); if (p) c.klic = p.klic; });
-  } else if (zv) os = kopie(zv.casti);
-  if (os.length) d.osnova = os; else { delete d.osnova; delete d.osnova_id; }
+  if (osnova(d.osnova_id)) prepocitejOsnovu();   // osnova z knihovny: stav drží zaškrtávátka a hejblátka
+  else if ($('z-osnova')){
+    var os = ctiOsnovu($('z-osnova').value);
+    if (os.length) d.osnova = os; else delete d.osnova;
+    delete d.osnova_id; delete d.osnova_nastaveni;
+  }
   var rv = $('z-rada').value;
   form.rada = rv === '+' ? '+' : rv ? (rady().find(function(x){ return x.id === rv; }) || null) : null;
   form.novaRada = $('z-rada-nova').value; form.poradi = $('z-poradi').value;
@@ -132,7 +182,8 @@ function klikFormular(e){
   var t = e.target, b;
   // preset přepíše definici – DOM se už nečte (měl by starý rozsah a osnovu)
   if ((b = t.closest('[data-preset]'))){ naplnTexty(); zvolPreset(b.dataset.preset); prekresli(true); return true; }
-  if ((b = t.closest('.z-seg button'))){
+  if (klikOsnova(t)) return true;
+  if ((b = t.closest('.z-seg[data-param] button'))){
     var p = b.parentElement.dataset.param, h = b.dataset.hodnota;
     if (h) form.definice[p] = h; else delete form.definice[p];
     b.parentElement.querySelectorAll('button').forEach(function(x){ x.setAttribute('aria-pressed', x === b); });
@@ -148,8 +199,16 @@ function klikFormular(e){
     naplnTexty();
     var on = A.$('z-osnova-nazev').value.trim(); if (!on){ A.$('z-osnova-nazev').focus(); return true; }
     if (!form.definice.osnova){ A.hlas('Osnova je prázdná.'); return true; }
-    var xo = schranka('osnovy-bob'), oid = 'bob-' + slug(on);
-    xo.items[oid] = {id: oid, nazev: on, casti: kopie(form.definice.osnova), zmeneno: ted()};
+    var xo = schranka('osnovy-bob'), oid = 'bob-' + slug(on), zdroj = osnova(form.definice.osnova_id), cs;
+    if (zdroj){   // z knihovny: zapnuté části i s hejblátky, aktuální hodnoty se stanou výchozími
+      cs = zdroj.casti.filter(function(c){ return form.definice.osnova_nastaveni[c.klic].zap; }).map(function(c){
+        var k = kopie(c), x = form.definice.osnova_nastaveni[c.klic];
+        (k.hejblatka || []).forEach(function(h){ if (x[h.klic] !== undefined) h.vychozi = kopie(x[h.klic]); });
+        return k;
+      });
+    } else cs = kopie(form.definice.osnova);
+    xo.items[oid] = {id: oid, nazev: on, casti: cs, pojmy: zdroj && zdroj.pojmy, situace: zdroj && zdroj.situace, zmeneno: ted()};
+    delete form.definice.osnova_nastaveni;
     A.pis('osnovy-bob', xo); form.definice.osnova_id = oid; prekresli(true);
     A.hlas('Osnova „' + on + '“ uložena – odjede při ↻ obnovit.'); return true;
   }
@@ -185,10 +244,16 @@ function zmenaFormular(e){
     row.querySelector('output').textContent = v + ' %'; row.querySelector('.z-reset').hidden = false;
   } else if (t.id === 'z-osnova-vyber' && e.type === 'change'){
     naplnTexty();
-    var o = osnova(t.value);
-    if (o){ form.definice.osnova_id = o.id; form.definice.osnova = kopie(o.casti); }
-    else { delete form.definice.osnova_id; }
+    var o = osnova(t.value), d = form.definice;
+    delete d.osnova_nastaveni;
+    if (o){ d.osnova_id = o.id; delete d.osnova; prepocitejOsnovu(); }   // nová osnova = všechno zapnuté, výchozí hodnoty
+    else { delete d.osnova_id; (d.osnova || []).forEach(function(c){ delete c.nastaveni; }); }   // na text: jen názvy částí
     prekresli(true);
+  } else if (t.dataset && t.dataset.osnZapCast){
+    form.definice.osnova_nastaveni[t.dataset.osnZapCast].zap = t.checked; prepocitejOsnovu(); prekresli();
+  } else if (t.dataset && t.dataset.osnCis !== undefined && t.dataset.cast){
+    form.definice.osnova_nastaveni[t.dataset.cast][t.dataset.hk] = parseInt(t.value, 10);
+    t.nextElementSibling.textContent = t.value; prepocitejOsnovu();
   } else if (t.id === 'z-rada'){
     A.$('z-rada-nova').hidden = t.value !== '+'; A.$('z-poradi').hidden = !t.value;
     if (t.value === '+') A.$('z-rada-nova').focus();
