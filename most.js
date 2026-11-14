@@ -51,6 +51,8 @@ var css = el('style', null, [
   '.ctecka-seznam .cit{display:block;font-style:italic;color:var(--c-ink2);margin-top:2px}',
   '.ctecka-seznam button{float:right;font:400 12px system-ui,sans-serif;border:1px solid var(--c-rule);background:transparent;color:var(--c-ink2);border-radius:999px;padding:3px 9px;margin-left:8px;cursor:pointer}',
   '.ctecka-toast{position:fixed;z-index:2147483003;left:50%;transform:translateX(-50%);bottom:calc(64px + env(safe-area-inset-bottom,0px));background:var(--c-ink);color:var(--c-paper);font:500 14px system-ui,sans-serif;padding:8px 14px;border-radius:999px;box-shadow:0 3px 12px rgba(0,0,0,.25);max-width:90vw;text-align:center}',
+  '.ctecka-vybrano{outline:2px dashed currentColor!important;outline-offset:4px}',
+  'img,svg{-webkit-touch-callout:none}',
   // lajna splněného přání: tečkovaná, šedá – viditelná i v černobílém režimu, nic jen barvou
   '.ctecka-lajna{position:absolute;left:-13px;top:2px;bottom:2px;width:12px;padding:0;margin:0;border:0;border-left:2px dotted currentColor;opacity:.4;background:transparent;cursor:pointer}',
   '.ctecka-lajna::after{content:"";position:absolute;left:-10px;right:-4px;top:0;bottom:0}'
@@ -141,8 +143,53 @@ document.addEventListener('selectionchange', function(){
 kokos.addEventListener('pointerdown', function(e){ e.preventDefault(); });   // ať ťuknutí nezruší výběr dřív, než se uloží
 kokos.addEventListener('click', function(){ if (posledni) otevriPanel(posledni); });
 
+// dlouhé podržení prstu na fotce, kresbě, hračce, scéně… (prvky, které nejde označit jako text) → přání k celé kostce.
+// Krátké ťuknutí zůstává hračkám; text dál jde přes systémové označení.
+var GRAFIKA = 'svg, img, canvas, video, picture, .hracka, .scena, .cislo, .zebrik, .vahy, .foto, .obr';
+var BLOK = 'figure, .foto, .obr, .hracka, .scena, .diagram, .cislo, .zebrik, .vahy, .srovnej, .tabulka, .vzorec, .plate, .board, .box';
+function druhPrvku(b, g){
+  var m = function(s){ return b.matches(s) || g.matches(s); };
+  return m('.hracka') ? 'hračka' : m('.scena') ? 'scéna' : m('.foto, img, picture') || b.querySelector('img') ? 'fotka'
+    : m('.cislo') ? 'velké číslo' : m('.zebrik') ? 'žebřík měřítek' : m('video') ? 'video' : 'kresba';
+}
+function popisPrvku(b, g){
+  var q = b.querySelector('figcaption, .popis, .titul, .legend, h3, h4'), img = b.matches('img') ? b : b.querySelector('img');
+  var t = (q && (q.innerText || q.textContent)) || (img && img.alt) || g.getAttribute('aria-label') || b.getAttribute('aria-label')
+    || (b.querySelector('title') || {}).textContent || (b.innerText || '').slice(0, 160);
+  t = String(t || '').replace(/\s+/g, ' ').trim();
+  // bez popisku: text nejbližšího obalu, ať Claude kostku najde
+  for (var p = b.parentElement; !t && p && p !== document.body; p = p.parentElement){
+    var s = (p.innerText || '').replace(/\s+/g, ' ').trim(); if (s.length > 20) t = 'u textu: ' + s.slice(0, 160);
+  }
+  return t.slice(0, 240);
+}
+var drz = null, vybrany = null;
+document.addEventListener('pointerdown', function(e){
+  if (panelOtevren || vUi(e.target) || (e.pointerType === 'mouse' && e.button !== 0)) return;
+  var g = e.target.closest && e.target.closest(GRAFIKA);
+  if (!g || e.target.closest('input, button, select, textarea, a, summary')) return;
+  var b = g.closest(BLOK) || g, x = e.clientX, y = e.clientY;
+  clearTimeout(drz && drz.t);
+  drz = {x: x, y: y, t: setTimeout(function(){
+    drz = null;
+    try { getSelection().removeAllRanges(); } catch (er) {}
+    var druh = druhPrvku(b, g);
+    otevriPanel({citace: '[' + druh + '] ' + popisPrvku(b, g), pred: '', po: '', prvek: druh, nadpis: nadpisPred(b), id: idPred(b)});
+    vybrany = b; b.classList.add('ctecka-vybrano');
+  }, 550)};
+}, true);
+function zrusDrz(){ if (drz){ clearTimeout(drz.t); drz = null; } }
+document.addEventListener('pointermove', function(e){ if (drz && Math.abs(e.clientX - drz.x) + Math.abs(e.clientY - drz.y) > 12) zrusDrz(); }, true);
+['pointerup', 'pointercancel', 'scroll'].forEach(function(t){ addEventListener(t, zrusDrz, true); });
+// systémové menu „uložit obrázek“ by se přes panel přetahovalo
+document.addEventListener('contextmenu', function(e){ if (panelOtevren || drz || (e.target.closest && e.target.closest(GRAFIKA) && !vUi(e.target))) e.preventDefault(); }, true);
+
 var panel = null;
-function zavriPanel(){ if (panel){ panel.remove(); panel = null; } panelOtevren = false; kokos.hidden = true; if (visualViewport) visualViewport.removeEventListener('resize', nadKlavesnici); }
+function zavriPanel(){
+  if (panel){ panel.remove(); panel = null; } panelOtevren = false; kokos.hidden = true;
+  if (vybrany){ vybrany.classList.remove('ctecka-vybrano'); vybrany = null; }
+  if (visualViewport) visualViewport.removeEventListener('resize', nadKlavesnici);
+}
 function nadKlavesnici(){ if (panel && visualViewport) panel.style.bottom = Math.max(0, innerHeight - visualViewport.height - visualViewport.offsetTop) + 'px'; }
 function otevriPanel(k){
   zavriPanel(); panelOtevren = true; kokos.hidden = true;
@@ -168,6 +215,7 @@ function otevriPanel(k){
     var x = prani(), id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     x.items[id] = {id: id, cesta: P, titul: document.title, kdy: new Date().toISOString(), druhy: druhy, text: ta.value.trim(),
       citace: k.citace, pred: k.pred, po: k.po, nadpis: k.nadpis, kotva: k.id, stav: 'ceka', zmeneno: Date.now()};
+    if (k.prvek) x.items[id].prvek = k.prvek;
     w('prani', x); zavriPanel(); obnovPocet();
     toast('Přání uloženo 🥥 Odjede při ↻ obnovit na polici.');
   };
