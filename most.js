@@ -71,18 +71,28 @@ var pocet = el('button', null); pocet.type = 'button'; pocet.hidden = true; poce
 pill.appendChild(zpet);
 // přepínač světlý/tmavý: všechny obaly mají tmavé barvy pod data-theme, jen ne všechny vlastní tlačítko
 // (učebnice ho má – #themebtn – tak tam druhé nepřidávat). Volba platí pro celou čtečku (volby.tema).
+// systémová lišta (čas, baterka) v nainstalované appce = theme-color podle skutečného pozadí výrobku
+function barvaListy(){
+  document.querySelectorAll('meta[name="theme-color"]').forEach(function(m){ m.remove(); });
+  var bg = getComputedStyle(document.body).backgroundColor;
+  if (!bg || bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') bg = getComputedStyle(document.documentElement).backgroundColor;
+  var m = document.createElement('meta'); m.name = 'theme-color'; m.content = bg && bg !== 'rgba(0, 0, 0, 0)' ? bg : '#f5f1e8';
+  document.head.appendChild(m);
+}
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', barvaListy);
 var vlastni = document.getElementById('themebtn');
 if (vlastni){   // učebnice: její ☾ si pamatuje téma po svém – sladit s čtečkou oběma směry
   var vt = (c('volby', {}) || {}).tema; if (vt) document.documentElement.dataset.theme = vt;
-  vlastni.addEventListener('click', function(){ setTimeout(function(){ var v = c('volby', {}) || {}; v.tema = document.documentElement.dataset.theme; w('volby', v); }, 0); });
+  vlastni.addEventListener('click', function(){ setTimeout(function(){ var v = c('volby', {}) || {}; v.tema = document.documentElement.dataset.theme; w('volby', v); barvaListy(); }, 0); });
 }
+barvaListy();
 if (!vlastni){
   var tema = el('button', null); tema.type = 'button';
   var temaNyni = function(){ return document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); };
   var temaIkona = function(){ tema.textContent = temaNyni() === 'dark' ? '☀' : '☾'; tema.setAttribute('aria-label', temaNyni() === 'dark' ? 'Světlý režim' : 'Tmavý režim'); };
   tema.onclick = function(){
     var nx = temaNyni() === 'dark' ? 'light' : 'dark', v = c('volby', {}) || {};
-    document.documentElement.dataset.theme = nx; v.tema = nx; w('volby', v); temaIkona();
+    document.documentElement.dataset.theme = nx; v.tema = nx; w('volby', v); temaIkona(); barvaListy();
   };
   temaIkona(); pill.appendChild(tema);
 }

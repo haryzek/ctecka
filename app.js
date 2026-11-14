@@ -30,7 +30,16 @@ function uplatniVolby(){
   var r = document.documentElement;
   if (volby.eink) r.setAttribute('data-eink', ''); else r.removeAttribute('data-eink');
   if (volby.tema) r.setAttribute('data-theme', volby.tema); else r.removeAttribute('data-theme');
+  barvaListy();
 }
+// systémová lišta nahoře (čas, baterka) v nainstalované appce = theme-color; podle skutečného pozadí stránky
+function barvaListy(){
+  document.querySelectorAll('meta[name="theme-color"]').forEach(function(m){ m.remove(); });
+  var m = document.createElement('meta'); m.name = 'theme-color';
+  m.content = getComputedStyle(document.body || document.documentElement).backgroundColor || '#f5f1e8';
+  document.head.appendChild(m);
+}
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', barvaListy);
 uplatniVolby();
 $('datum').textContent = new Date().toLocaleDateString('cs-CZ', {weekday: 'long', day: 'numeric', month: 'long'});
 function hlas(t){ $('stav').textContent = t; }

@@ -7,7 +7,10 @@
 <style>body{margin:0;background:#f5f1e8;color:#5f574b;font:16px system-ui;display:grid;place-items:center;min-height:100vh}
 @media (prefers-color-scheme:dark){html:not([data-theme=light]) body{background:#141310;color:#a99f8d}}
 html[data-theme=dark] body{background:#141310;color:#a99f8d}</style>
-<script>try { var t = (JSON.parse(localStorage.getItem('ctecka:volby') || '{}')).tema; if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}</script>
+<script>try { var t = (JSON.parse(localStorage.getItem('ctecka:volby') || '{}')).tema; if (t) document.documentElement.setAttribute('data-theme', t);
+  var tm = document.createElement('meta'); tm.name = 'theme-color';   // systémová lišta během načítání (pak ji nastaví most.js)
+  tm.content = (t || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')) === 'dark' ? '#141310' : '#f5f1e8';
+  document.head.appendChild(tm); } catch (e) {}</script>
 </head>
 <body>
 <p id="zprava">Otevírám…</p>
