@@ -78,6 +78,7 @@ function htmlFormulare(){
     + '<textarea id="z-osnova" rows="4" placeholder="Biografie: stručně, s dobou&#10;Hlavní otázka: co mu krouží hlavou&#10;Kazuistiky: 5 rozhovorů terapeuta s klientem">' + esc(osnova) + '</textarea>'
     + '<div class="z-preset-uloz"><input id="z-preset-nazev" placeholder="název presetu, např. Psychoanalytik"><button type="button" id="z-preset-uloz">Uložit jako preset</button></div>'
     + '</details>'
+    + '<label class="z-pole"><span>Ještě ti k tomu říkám <i>(volné povídání: přání, nálada, co určitě ano a co ne)</i></span><textarea id="z-poznamka" rows="4">' + esc(form.poznamka || '') + '</textarea></label>'
     + '<label class="z-pole"><span>Zdroje <i>(nepovinné: kniha v inboxu, projekt, moje poznámky o…)</i></span><textarea id="z-zdroje" rows="2">' + esc(form.zdroje_text) + '</textarea></label>'
     + '<h3>Řada</h3><div class="z-rada"><select id="z-rada">' + radyOpt + '</select>'
     + '<input id="z-rada-nova" placeholder="název nové řady"' + (form.rada === '+' ? '' : ' hidden') + ' value="' + esc(form.novaRada) + '">'
@@ -94,7 +95,7 @@ function nastavCestu(cesta, hodnota){   // 'prvky.text' | 'detail.hracka'
 function naplnTexty(){   // texty z formuláře do stavu (před překreslením a odesláním)
   var $ = A.$, d = form.definice;
   if (!$('z-tema')) return;
-  form.tema = $('z-tema').value; form.proc = $('z-proc').value; form.zdroje_text = $('z-zdroje').value;
+  form.tema = $('z-tema').value; form.proc = $('z-proc').value; form.zdroje_text = $('z-zdroje').value; form.poznamka = $('z-poznamka').value;
   form.otevreno = document.querySelector('.z-doladit').open;
   var n = parseInt($('z-rozsah-n').value, 10), j = $('z-rozsah-j').value;
   if (n || j){ d.rozsah = {}; if (j) d.rozsah.jednotka = j; if (n) d.rozsah.hodnota = n; } else delete d.rozsah;
@@ -141,7 +142,7 @@ function klikFormular(e){
     if (rada && form.poradi) rada.poradi = parseInt(form.poradi, 10);
     var pz = preset(form.preset), id = ted().toString(36) + Math.random().toString(36).slice(2, 5);
     uloz({id: id, kdy: new Date().toISOString(), tema: form.tema.trim(), proc: form.proc.trim(), preset: form.preset,
-      preset_nazev: pz ? pz.nazev : '', typ: pz ? pz.typ : '', definice: kopie(form.definice), zdroje_text: form.zdroje_text.trim(),
+      preset_nazev: pz ? pz.nazev : '', typ: pz ? pz.typ : '', definice: kopie(form.definice), zdroje_text: form.zdroje_text.trim(), poznamka: (form.poznamka || '').trim(),
       rada: rada, stav: 'ceka'});
     form = null; location.hash = ''; A.hlas('Zadání uloženo 📝 Odjede při ↻ obnovit.');
     return true;
