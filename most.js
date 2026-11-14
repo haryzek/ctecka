@@ -63,7 +63,20 @@ pill.style.left = 'max(10px,env(safe-area-inset-left,0px))';
 var zpet = el('a', null, '← police'); zpet.href = './'; zpet.id = 'ctecka-zpet';
 zpet.onclick = function(e){ if (document.referrer.indexOf(location.origin + location.pathname.replace(/cti\.html$/, '')) === 0 && history.length > 1){ e.preventDefault(); history.back(); } };
 var pocet = el('button', null); pocet.type = 'button'; pocet.hidden = true; pocet.onclick = function(){ seznamPrani(); };
-pill.appendChild(zpet); pill.appendChild(pocet); document.body.appendChild(pill);
+pill.appendChild(zpet);
+// přepínač světlý/tmavý: všechny obaly mají tmavé barvy pod data-theme, jen ne všechny vlastní tlačítko
+// (učebnice ho má – #themebtn – tak tam druhé nepřidávat). Volba platí pro celou čtečku (volby.tema).
+if (!document.getElementById('themebtn')){
+  var tema = el('button', null); tema.type = 'button';
+  var temaNyni = function(){ return document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); };
+  var temaIkona = function(){ tema.textContent = temaNyni() === 'dark' ? '☀' : '☾'; tema.setAttribute('aria-label', temaNyni() === 'dark' ? 'Světlý režim' : 'Tmavý režim'); };
+  tema.onclick = function(){
+    var nx = temaNyni() === 'dark' ? 'light' : 'dark', v = c('volby', {}) || {};
+    document.documentElement.dataset.theme = nx; v.tema = nx; w('volby', v); temaIkona();
+  };
+  temaIkona(); pill.appendChild(tema);
+}
+pill.appendChild(pocet); document.body.appendChild(pill);
 var y0 = scrollY;
 addEventListener('scroll', function(){
   var y = scrollY, s = y > y0 && y > 120;
