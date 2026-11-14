@@ -294,7 +294,15 @@ $('obsah').addEventListener('click', function(e){
   if (a){ e.preventDefault(); otevri(a.dataset.cesta); }
   else if (k){ e.preventDefault(); vyhod(k.dataset.kos); }
 });
-window.addEventListener('pageshow', function(e){ if (e.persisted) vykresli(); });   // návrat zpět z výrobku
+// návrat zpět z výrobku: téma mohl Bob přepnout ve výrobku (☾ u „← police“) – načíst volby znovu
+window.addEventListener('pageshow', function(e){ volby = cti('volby', volby); uplatniVolby(); temaIkona(); if (e.persisted) vykresli(); });
+function temaNyni(){ return document.documentElement.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); }
+function temaIkona(){ $('b-tema').textContent = temaNyni() === 'dark' ? '☀' : '☾'; }
+$('b-tema').addEventListener('click', function(){
+  volby = cti('volby', volby) || {}; volby.tema = temaNyni() === 'dark' ? 'light' : 'dark';
+  pis('volby', volby); uplatniVolby(); temaIkona();
+});
+temaIkona();
 
 // ---- nastavení ----
 function nastaveniInfo(){
@@ -307,7 +315,7 @@ function nastaveniInfo(){
 $('b-nast').addEventListener('click', function(){ nastaveniInfo(); $('nastaveni').showModal(); });
 $('n-zavrit').addEventListener('click', function(){ $('nastaveni').close(); });
 $('n-eink').addEventListener('change', function(){ volby.eink = this.checked; pis('volby', volby); uplatniVolby(); });
-$('n-tema').addEventListener('change', function(){ volby.tema = this.value; pis('volby', volby); uplatniVolby(); });
+$('n-tema').addEventListener('change', function(){ volby.tema = this.value; pis('volby', volby); uplatniVolby(); temaIkona(); });
 $('n-pripojit').addEventListener('click', function(){ DBX.prihlas(); });
 $('n-odpojit').addEventListener('click', function(){ DBX.odhlas(); nastaveniInfo(); vykresli(); });
 $('b-sync').addEventListener('click', synchronizuj);

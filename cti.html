@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Čtečka</title>
 <style>body{margin:0;background:#f5f1e8;color:#5f574b;font:16px system-ui;display:grid;place-items:center;min-height:100vh}
-@media (prefers-color-scheme:dark){body{background:#141310;color:#a99f8d}}</style>
+@media (prefers-color-scheme:dark){html:not([data-theme=light]) body{background:#141310;color:#a99f8d}}
+html[data-theme=dark] body{background:#141310;color:#a99f8d}</style>
+<script>try { var t = (JSON.parse(localStorage.getItem('ctecka:volby') || '{}')).tema; if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}</script>
 </head>
 <body>
 <p id="zprava">Otevírám…</p>

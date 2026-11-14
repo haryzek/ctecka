@@ -71,7 +71,12 @@ var pocet = el('button', null); pocet.type = 'button'; pocet.hidden = true; poce
 pill.appendChild(zpet);
 // přepínač světlý/tmavý: všechny obaly mají tmavé barvy pod data-theme, jen ne všechny vlastní tlačítko
 // (učebnice ho má – #themebtn – tak tam druhé nepřidávat). Volba platí pro celou čtečku (volby.tema).
-if (!document.getElementById('themebtn')){
+var vlastni = document.getElementById('themebtn');
+if (vlastni){   // učebnice: její ☾ si pamatuje téma po svém – sladit s čtečkou oběma směry
+  var vt = (c('volby', {}) || {}).tema; if (vt) document.documentElement.dataset.theme = vt;
+  vlastni.addEventListener('click', function(){ setTimeout(function(){ var v = c('volby', {}) || {}; v.tema = document.documentElement.dataset.theme; w('volby', v); }, 0); });
+}
+if (!vlastni){
   var tema = el('button', null); tema.type = 'button';
   var temaNyni = function(){ return document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); };
   var temaIkona = function(){ tema.textContent = temaNyni() === 'dark' ? '☀' : '☾'; tema.setAttribute('aria-label', temaNyni() === 'dark' ? 'Světlý režim' : 'Tmavý režim'); };

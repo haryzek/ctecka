@@ -6,6 +6,8 @@
 <title>Čtečka</title>
 <meta name="theme-color" content="#f5f1e8" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#141310" media="(prefers-color-scheme: dark)">
+<script>/* téma a e-ink hned, ať polička neblikne světle, když je zvolený tmavý režim */
+try { var v = JSON.parse(localStorage.getItem('ctecka:volby') || '{}'); if (v.tema) document.documentElement.setAttribute('data-theme', v.tema); if (v.eink) document.documentElement.setAttribute('data-eink', ''); } catch (e) {}</script>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="ikona.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="ikona-192.png">
@@ -140,7 +142,7 @@ dialog p{font-size:15px;color:var(--ink2)}
 </head>
 <body>
 <main id="domov">
-  <div class="lista"><span>Čtečka</span><span class="ovl"><button id="b-zadani" title="Nové zadání nebo nápad">＋ zadání</button><button id="b-sync" title="Stáhnout novinky">↻ obnovit</button><button id="b-nast" title="Nastavení">⚙</button></span></div>
+  <div class="lista"><span>Čtečka</span><span class="ovl"><button id="b-zadani" title="Nové zadání nebo nápad">＋ zadání</button><button id="b-sync" title="Stáhnout novinky">↻ obnovit</button><button id="b-tema" title="Světlý / tmavý režim" aria-label="Světlý / tmavý režim">☾</button><button id="b-nast" title="Nastavení">⚙</button></span></div>
   <h1>Ráno <em>pro Boba</em></h1>
   <p class="datum" id="datum"></p>
   <div id="obsah"></div>
