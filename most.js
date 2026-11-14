@@ -40,7 +40,6 @@ var css = el('style', null, [
   '.ctecka-cipy button{font:400 14px system-ui,sans-serif;color:var(--c-ink);background:transparent;border:1px solid var(--c-rule);border-radius:999px;padding:7px 12px;cursor:pointer}',
   '.ctecka-cipy button[aria-pressed=true]{border:2px solid var(--c-ink);padding:6px 11px;font-weight:600}',
   '.ctecka-cipy button[aria-pressed=true]::after{content:" ✓"}',
-  '.ctecka-cipy .vic{border-style:dashed;color:var(--c-ink2)}',
   '.ctecka-panel textarea{display:block;box-sizing:border-box;width:100%;min-height:64px;font:400 15.5px/1.4 system-ui,sans-serif;color:var(--c-ink);background:transparent;border:1px solid var(--c-rule);border-radius:10px;padding:9px 11px;resize:vertical;-webkit-user-select:text;user-select:text}',
   '.ctecka-akce{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}',
   '.ctecka-akce button{font:500 14px system-ui,sans-serif;border-radius:999px;padding:9px 16px;cursor:pointer;border:1px solid var(--c-rule);background:transparent;color:var(--c-ink)}',
@@ -72,7 +71,7 @@ addEventListener('scroll', function(){
 }, {passive: true});
 
 // ---- přání ----
-var DRUHY = [   // [klíč, štítek]; prvních 5 je hned na očích, zbytek pod „víc…“
+var DRUHY = [   // [klíč, štítek]; všechny na očích (Bob chce vidět všechny možnosti – inspirace)
   ['nechapu', '🤷 nechápu, řekni jinak'], ['rozsirit', '🔍 rozšířit'], ['diagram', '📐 diagram'], ['hracka', '🎛 hračka'], ['libi', '❤️ tohle je ono'],
   ['fotka', '📷 fotka'], ['priklad', '🎯 příklad / analogie'], ['overit', '⚠️ ověř, smrdí mi to'], ['skrtni', '✂️ vata, škrtni'],
   ['souvislost', '🕸 souvislost s jiným výrobkem'], ['heslo', '🌱 na tohle celé heslo'], ['myslenka', '✍️ moje myšlenka']
@@ -137,9 +136,9 @@ function otevriPanel(k){
   try { getSelection().removeAllRanges(); } catch (e) {}
   panel = el('div', 'ctecka-ui ctecka-panel');
   panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'Přání k označenému místu');
-  var tl = DRUHY.map(function(d, i){ return '<button type="button" data-d="' + d[0] + '" aria-pressed="false"' + (i >= 5 ? ' hidden' : '') + '>' + d[1] + '</button>'; }).join('');
+  var tl = DRUHY.map(function(d){ return '<button type="button" data-d="' + d[0] + '" aria-pressed="false">' + d[1] + '</button>'; }).join('');
   panel.innerHTML = '<div class="in"><h4>🥥 Přání</h4><p class="ctecka-cit">„' + esc(k.citace) + '“</p>'
-    + '<div class="ctecka-cipy">' + tl + '<button type="button" class="vic">víc…</button></div>'
+    + '<div class="ctecka-cipy">' + tl + '</div>'
     + '<textarea placeholder="Vlastními slovy (nebo jen ťukni na tlačítko)…" aria-label="Přání vlastními slovy"></textarea>'
     + '<div class="ctecka-akce"><button type="button" class="zrus">Zrušit</button><button type="button" class="hlavni" disabled>Dát přání</button></div></div>';
   document.body.appendChild(panel);
@@ -147,7 +146,6 @@ function otevriPanel(k){
   function stavOk(){ ok.disabled = !panel.querySelector('[aria-pressed=true]') && !ta.value.trim(); }
   panel.querySelector('.ctecka-cipy').addEventListener('click', function(e){
     var b = e.target.closest('button'); if (!b) return;
-    if (b.classList.contains('vic')){ panel.querySelectorAll('.ctecka-cipy [hidden]').forEach(function(x){ x.hidden = false; }); b.remove(); return; }
     b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') === 'true' ? 'false' : 'true'); stavOk();
   });
   ta.addEventListener('input', stavOk);
