@@ -122,6 +122,7 @@ async function synchronizuj(){
       await synchronizujPrani();
       await synchronizujSchranku('zadani.json', 'zadani');       // ＋ zadání (zadani.js) ↔ Claude (nastroje/zadani)
       await synchronizujSchranku('presety-bob.json', 'presety-bob');   // Bobovy vlastní presety
+      await synchronizujSchranku('osnovy-bob.json', 'osnovy-bob');     // Bobovy uložené osnovy
     }
     pis('katalog', katalog);
     try { var rp = await zdroj.soubor('presety.json'); if (rp) pis('presety', await rp.json()); } catch (e) {}
