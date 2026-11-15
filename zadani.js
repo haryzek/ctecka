@@ -291,8 +291,8 @@ return {
     if (m){ var z = schranka('zadani').items[decodeURIComponent(m[1])]; return z ? htmlDetail(z) : '<p class="prazdno">Zadání nenalezeno. <a href="#">← police</a></p>'; }
     return null;
   },
-  domov: function(){   // fronta zadání nad policemi
-    var f = zadani().filter(function(z){ return !z.skryto && z.stav !== 'zruseno'; })
+  domov: function(){   // fronta zadání nad policemi – jen rozpracovaná; hotové žije v polici (Bob 2026-11-15)
+    var f = zadani().filter(function(z){ return !z.skryto && z.stav !== 'zruseno' && z.stav !== 'hotovo'; })
       .sort(function(a, b){ return String(b.kdy).localeCompare(String(a.kdy)); });
     if (!f.length) return '';
     return '<section class="regal fronta"><h3>Zadání · ' + f.length + '</h3><ul>' + f.map(function(z){
