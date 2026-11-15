@@ -1,6 +1,6 @@
 /* Service worker čtečky: skořápka apky a fonty offline. Knihovnu (výrobky) si do vlastní cache
    ukládá app.js. Při změně skořápky zvedni VERZE. */
-var VERZE = 'ctecka-skorapka-23';
+var VERZE = 'ctecka-skorapka-24';
 var SKORAPKA = ['./', 'index.html', 'cti.html', 'most.js', 'zadani.js', 'rady.js', 'app.js', 'nastaveni.js', 'manifest.webmanifest', 'ikona.svg', 'ikona-192.png', 'ikona-512.png'];
 
 self.addEventListener('install', function(e){

@@ -2,6 +2,7 @@
    1) pamatuje si pozici čtení a značí přečteno, 2) tlačítko ← police,
    3) PŘÁNÍ: označíš text → 🥥 → panel s tlačítky (diagram, hračka, rozšířit…) a polem pro vlastní slova.
       Přání se hromadí v localStorage (ctecka:prani) a do Dropboxu (prani.json) je pošle až ↻ obnovit na polici.
+      📝 Evernote (jen u textu): citace do ctecka:evernote → ↻ obnovit ji připíše na konec evernote.txt.
    4) splněná přání: Claude je zapracuje do výrobku a obalí změněný blok data-prani="<id>" data-splneno="RRRR-MM-DD";
       most k němu dá decentní tečkovanou lajnu (14 dní), ťuknutím se ukáže, jaké přání to bylo. */
 (function(){
@@ -136,7 +137,7 @@ function kotva(sel){
   var r = sel.getRangeAt(0), citace = sel.toString().replace(/\s+/g, ' ').trim();
   var blok = textBloku(r.commonAncestorContainer), cely = (blok.textContent || '').replace(/\s+/g, ' ');
   var i = cely.indexOf(citace);
-  return {citace: citace.slice(0, 600), pred: i > 0 ? cely.slice(Math.max(0, i - 60), i).trim() : '',
+  return {citace: citace.slice(0, 600), cela: citace, pred: i > 0 ? cely.slice(Math.max(0, i - 60), i).trim() : '',
           po: i >= 0 ? cely.slice(i + citace.length, i + citace.length + 60).trim() : '',
           nadpis: nadpisPred(r.startContainer), id: idPred(r.commonAncestorContainer)};
 }
@@ -218,7 +219,9 @@ function otevriPanel(k){
   panel.innerHTML = '<div class="in"><h4>🥥 Přání</h4><p class="ctecka-cit">„' + esc(k.citace) + '“</p>'
     + '<div class="ctecka-cipy">' + tl + '</div>'
     + '<textarea placeholder="Vlastními slovy (nebo jen ťukni na tlačítko)…" aria-label="Přání vlastními slovy"></textarea>'
-    + '<div class="ctecka-akce"><button type="button" class="zrus">Zrušit</button><button type="button" class="hlavni" disabled>Dát přání</button></div></div>';
+    + '<div class="ctecka-akce"><button type="button" class="zrus">Zrušit</button>'
+    + (k.prvek ? '' : '<button type="button" class="evernote" title="Citaci přidat jako řádek do evernote.txt v Dropboxu">📝 Evernote</button>')
+    + '<button type="button" class="hlavni" disabled>Dát přání</button></div></div>';
   document.body.appendChild(panel);
   var ta = panel.querySelector('textarea'), ok = panel.querySelector('.hlavni');
   function stavOk(){ ok.disabled = !panel.querySelector('[aria-pressed=true]') && !ta.value.trim(); }
@@ -228,6 +231,14 @@ function otevriPanel(k){
   });
   ta.addEventListener('input', stavOk);
   panel.querySelector('.zrus').onclick = zavriPanel;
+  // 📝 Evernote: citace jako řádek do fronty ctecka:evernote; ↻ obnovit ji připíše na konec evernote.txt v Dropboxu
+  var ev = panel.querySelector('.evernote');
+  if (ev) ev.onclick = function(){
+    var tit = document.title;
+    try { var m = JSON.parse(document.getElementById('textbook-meta').textContent); tit = m.title + (m.subtitle ? ': ' + m.subtitle : ''); } catch (e) {}
+    var f = c('evernote', []); f.push('„' + (k.cela || k.citace) + '“ — ' + tit); w('evernote', f);
+    zavriPanel(); toast('📝 Do Evernote (' + f.length + ' čeká). Odjede při ↻ obnovit na polici.');
+  };
   ok.onclick = function(){
     var druhy = [].map.call(panel.querySelectorAll('[aria-pressed=true]'), function(b){ return b.dataset.d; });
     var x = prani(), id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);

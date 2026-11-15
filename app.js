@@ -130,8 +130,7 @@ async function synchronizuj(){
       await synchronizujStav();
       await synchronizujPrani();
       await synchronizujSchranku('zadani.json', 'zadani');       // ＋ zadání (zadani.js) ↔ Claude (nastroje/zadani)
-      await synchronizujSchranku('presety-bob.json', 'presety-bob');   // Bobovy vlastní presety
-      await synchronizujSchranku('osnovy-bob.json', 'osnovy-bob');     // Bobovy uložené osnovy
+      await posliEvernote();
     }
     pis('katalog', katalog);
     try { var rp = await zdroj.soubor('presety.json'); if (rp) pis('presety', await rp.json()); } catch (e) {}
@@ -173,6 +172,15 @@ async function synchronizujPrani(){
   Object.keys(lok.items).forEach(function(id){ if (!vzd[id]) vzd[id] = lok.items[id]; });
   pis('prani', {items: vzd});
   if (nahrat) await DBX.nahraj('prani.json', JSON.stringify({items: vzd}, null, 1));
+}
+// 📝 Evernote: most.js sbírá citace do ctecka:evernote (pole řádků); tady se připíšou na konec evernote.txt
+// v Dropboxu. Soubor je Bobův obyčejný texták – smí ho promazat, čtečka jen přidává nové řádky.
+async function posliEvernote(){
+  var f = cti('evernote', []); if (!f.length) return;
+  var r = await DBX.stahni('evernote.txt'), t = r ? await r.text() : '';
+  if (t && !/\n$/.test(t)) t += '\n';
+  await DBX.nahraj('evernote.txt', t + f.join('\n') + '\n');
+  pis('evernote', (cti('evernote', []) || []).slice(f.length));   // mezitím přidané (jiná karta) nechat na příště
 }
 // obecná schránka {items: {id: {…, zmeneno}}} ↔ Dropbox: sloučení podle id, vyhrává novější změna
 // (Claude při zápisu taky nastavuje zmeneno). Na disku čtečky je pod ctecka:<klic>.
