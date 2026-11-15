@@ -25,6 +25,39 @@ function osnovy(){   // vestavěné (presety.json → osnovy) + Bobovy uložené
 }
 function casti(n){ return n + (n === 1 ? ' část' : n >= 2 && n <= 4 ? ' části' : ' částí'); }
 function osnova(id){ return osnovy().find(function(o){ return o.id === id; }); }
+// rodina osnov = víc protokolů k téže věci (Bobovo metaschodiště × Claudova stavba) → překlikávátko Protokol.
+// Bobova uložená kopie vestavěné osnovy patří k té, se kterou sdílí většinu klíčů částí.
+function zakladOsnovy(o){
+  if (!o) return null;
+  var vest = (spec() || {}).osnovy || [];
+  if (o.rodina) return vest.find(function(v){ return v.id === o.id; }) || o;
+  if (o.zaklad) return vest.find(function(v){ return v.id === o.zaklad; }) || null;
+  var kl = (o.casti || []).map(function(c){ return c.klic; });
+  return vest.find(function(v){
+    if (!v.rodina) return false;
+    var spol = (v.casti || []).filter(function(c){ return kl.indexOf(c.klic) >= 0; }).length;
+    return kl.length && spol * 2 > kl.length;
+  }) || null;
+}
+function htmlProtokol(d){
+  var z = zakladOsnovy(osnova(d.osnova_id)); if (!z) return '';
+  var cl = ((spec() || {}).osnovy || []).filter(function(v){ return v.rodina === z.rodina; });
+  if (cl.length < 2) return '';
+  return '<h3>Protokol</h3><div class="z-seg z-protokol">' + cl.map(function(v){
+      return '<button type="button" data-protokol="' + esc(v.id) + '" aria-pressed="' + (v.id === z.id) + '">' + esc(v.protokol || v.nazev) + '</button>'; }).join('')
+    + '</div>' + (z.protokol_popis ? '<p class="z-pozn">' + esc(z.protokol_popis) + '</p>' : '');
+}
+function prepniProtokol(id){
+  var d = form.definice, z = zakladOsnovy(osnova(d.osnova_id)), cil = osnova(id);
+  if (!cil || !z || z.id === id) return;
+  form.protokolPamet = form.protokolPamet || {};
+  form.protokolPamet[z.id] = {osnova_id: d.osnova_id, osnova_nastaveni: d.osnova_nastaveni, rozsah: d.rozsah};
+  var m = form.protokolPamet[id];
+  delete d.osnova; delete d.osnova_nastaveni;
+  if (m){ d.osnova_id = m.osnova_id; if (m.osnova_nastaveni) d.osnova_nastaveni = m.osnova_nastaveni; if (m.rozsah) d.rozsah = m.rozsah; else delete d.rozsah; }
+  else { d.osnova_id = id; if (cil.rozsah_doporuceny) d.rozsah = kopie(cil.rozsah_doporuceny); else delete d.rozsah; }
+  prepocitejOsnovu();
+}
 function osnovaText(casti){ return (casti || []).map(function(c){ return c.nazev + (c.zadani ? ': ' + c.zadani : ''); }).join('\n'); }
 function ctiOsnovu(text){
   return text.split('\n').map(function(l){ return l.trim(); }).filter(Boolean).map(function(l){
@@ -87,6 +120,7 @@ function htmlFormulare(){
     + '<label class="z-pole"><span>Téma</span><textarea id="z-tema" rows="2" placeholder="O čem? Stačí jedno slovo, klidně nápad z ulice.">' + esc(form.tema) + '</textarea></label>'
     + '<label class="z-pole"><span>Co mě na tom chytlo <i>(nepovinné, podle toho volím úhel)</i></span><textarea id="z-proc" rows="2">' + esc(form.proc) + '</textarea></label>'
     + '<h3>Rychlá volba</h3><div class="z-dlazdice">' + dl + '</div>'
+    + htmlProtokol(d)
     + '<details class="z-doladit"' + (form.otevreno ? ' open' : '') + '><summary>Doladit <i>(co nenastavíš, nechám na sobě)</i></summary>'
     + rozsah + params
     + '<h4>Prvky <i>(kolik čeho; auto = podle mě)</i></h4>' + prvky
@@ -189,6 +223,7 @@ function klikFormular(e){
     b.parentElement.querySelectorAll('button').forEach(function(x){ x.setAttribute('aria-pressed', x === b); });
     return true;
   }
+  if ((b = t.closest('[data-protokol]'))){ naplnTexty(); prepniProtokol(b.dataset.protokol); prekresli(true); return true; }
   if ((b = t.closest('[data-reset]'))){ nastavCestu(b.dataset.reset, null); prekresli(); return true; }
   if ((b = t.closest('[data-aparat]'))){
     var dalsi = {auto: 'ano', ano: 'ne', ne: 'auto'}[b.dataset.stav], ap = form.definice.aparat = form.definice.aparat || {};
@@ -207,7 +242,8 @@ function klikFormular(e){
         return k;
       });
     } else cs = kopie(form.definice.osnova);
-    xo.items[oid] = {id: oid, nazev: on, casti: cs, pojmy: zdroj && zdroj.pojmy, situace: zdroj && zdroj.situace, zmeneno: ted()};
+    var zk = zakladOsnovy(zdroj);   // kopie si nese rodinu kvůli překlikávátku Protokol
+    xo.items[oid] = {id: oid, nazev: on, casti: cs, pojmy: zdroj && zdroj.pojmy, situace: zdroj && zdroj.situace, zaklad: zk ? zk.id : undefined, zmeneno: ted()};
     delete form.definice.osnova_nastaveni;
     A.pis('osnovy-bob', xo); form.definice.osnova_id = oid; prekresli(true);
     A.hlas('Osnova „' + on + '“ uložena – odjede při ↻ obnovit.'); return true;
