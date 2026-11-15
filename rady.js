@@ -4,7 +4,8 @@
      <section data-osnova="hlavni-otazka" data-osnova-nazev="Hlavní otázka" id="o-hlavni-otazka">
        <aside class="jadro" data-jadro hidden>2–4 věty – jádro části</aside> …
      <aside class="jadro" data-pojem="superego" data-pojem-nazev="Superego" id="p-superego" hidden>…</aside>
-   Trasy: #rada/<id>, #napric/<id>, #napric/<id>/cast/<klic>, #napric/<id>/pojem/<klic>. */
+     <div class="kazuistika" data-situace="marta" data-situace-nazev="Marta" id="s-marta"> <aside class="jadro" data-jadro hidden>…</aside> …
+   Trasy: #rada/<id>, #napric/<id>, #napric/<id>/(cast|pojem|situace)/<klic>. */
 (window.CTECKA_MODULY = window.CTECKA_MODULY || []).push((function(){
 'use strict';
 var A;
@@ -23,7 +24,7 @@ function text(el){ return el ? (el.textContent || '').replace(/\s+/g, ' ').trim(
 var pamet = {};
 async function rozeber(it){
   var k = it.path + '?' + it.hash; if (pamet[k]) return pamet[k];
-  var html = await A.nactiHtml(it), out = {dil: it, casti: {}, poradi: [], pojmy: {}};
+  var html = await A.nactiHtml(it), out = {dil: it, casti: {}, poradi: [], pojmy: {}, situace: {}};
   if (html){
     var doc = new DOMParser().parseFromString(html, 'text/html');
     doc.querySelectorAll('[data-osnova]').forEach(function(s){
@@ -35,6 +36,11 @@ async function rozeber(it){
     doc.querySelectorAll('.jadro[data-pojem]').forEach(function(p){
       var klic = p.dataset.pojem; if (out.pojmy[klic]) return;
       out.pojmy[klic] = {nazev: p.dataset.pojemNazev || klic, jadro: text(p), kotva: p.id || ''};
+    });
+    doc.querySelectorAll('[data-situace]').forEach(function(s){   // společní pacienti a situace
+      var klic = s.dataset.situace; if (out.situace[klic]) return;
+      var j = s.querySelector('.jadro[data-jadro]') || s.querySelector('p');
+      out.situace[klic] = {nazev: s.dataset.situaceNazev || klic, jadro: text(j), kotva: s.id || ''};
     });
   }
   return (pamet[k] = out);
@@ -54,9 +60,11 @@ async function htmlNapric(id, druh, klic){
   A.hlas('');
   var nazevRady = esc(d[0].rada.nazev || id), zpet = '<a class="zpet" href="#rada/' + encodeURIComponent(id) + '">← ' + nazevRady + '</a>';
   if (!druh){   // rozcestník: části osnovy a pojmy
-    var casti = [], pojmy = {};
+    var casti = [], pojmy = {}, sit = {};
     roz.forEach(function(r){ r.poradi.forEach(function(k){ if (casti.indexOf(k) < 0) casti.push(k); });
-      Object.keys(r.pojmy).forEach(function(k){ pojmy[k] = pojmy[k] || {nazev: r.pojmy[k].nazev, n: 0}; pojmy[k].n++; }); });
+      Object.keys(r.pojmy).forEach(function(k){ pojmy[k] = pojmy[k] || {nazev: r.pojmy[k].nazev, n: 0}; pojmy[k].n++; });
+      Object.keys(r.situace || {}).forEach(function(k){ sit[k] = sit[k] || {nazev: r.situace[k].nazev, n: 0}; sit[k].n++; }); });
+    var sk = Object.keys(sit).sort(function(a, b){ return sit[b].n - sit[a].n || sit[a].nazev.localeCompare(sit[b].nazev, 'cs'); });
     var pocet = function(k, co){ return roz.filter(function(r){ return r[co][k]; }).length; };
     var nazevCasti = function(k){ var r = roz.find(function(x){ return x.casti[k]; }); return r ? r.casti[k].nazev : k; };
     var pk = Object.keys(pojmy).sort(function(a, b){ return pojmy[b].n - pojmy[a].n || pojmy[a].nazev.localeCompare(pojmy[b].nazev, 'cs'); });
@@ -65,16 +73,18 @@ async function htmlNapric(id, druh, klic){
           return '<li><a href="#napric/' + encodeURIComponent(id) + '/cast/' + encodeURIComponent(k) + '"><b>' + esc(nazevCasti(k)) + '</b><i>' + pocet(k, 'casti') + '/' + d.length + '</i></a></li>'; }).join('') + '</ul>' : '')
       + (pk.length ? '<h4>Po pojmu</h4><ul class="napric-seznam">' + pk.map(function(k){
           return '<li><a href="#napric/' + encodeURIComponent(id) + '/pojem/' + encodeURIComponent(k) + '"><b>' + esc(pojmy[k].nazev) + '</b><i>' + pojmy[k].n + '/' + d.length + '</i></a></li>'; }).join('') + '</ul>' : '')
+      + (sk.length ? '<h4>Po pacientovi a situaci</h4><ul class="napric-seznam">' + sk.map(function(k){
+          return '<li><a href="#napric/' + encodeURIComponent(id) + '/situace/' + encodeURIComponent(k) + '"><b>' + esc(sit[k].nazev) + '</b><i>' + sit[k].n + '/' + d.length + '</i></a></li>'; }).join('') + '</ul>' : '')
       + (!casti.length && !pk.length ? '<p class="prazdno">Díly zatím nemají značky osnovy (data-osnova) ani jádra pojmů. Claude je přidá při výrobě podle presetu s osnovou.</p>' : '')
       + '</section>';
   }
-  var co = druh === 'cast' ? 'casti' : 'pojmy', jmeno = '';
+  var co = druh === 'cast' ? 'casti' : druh === 'situace' ? 'situace' : 'pojmy', jmeno = '';
   var radky = roz.map(function(r){
-    var x = r[co][klic]; if (!x) return '';
+    var x = (r[co] || {})[klic]; if (!x) return '';
     jmeno = jmeno || x.nazev;
     return '<li><a href="' + odkaz(r.dil, x.kotva) + '"><b>' + esc(r.dil.title) + '</b><span>' + esc(x.jadro || '(bez jádra – otevři celé)') + '</span><i>celé →</i></a></li>';
   }).join('');
-  var chybi = roz.filter(function(r){ return !r[co][klic]; }).map(function(r){ return esc(r.dil.title); });
+  var chybi = roz.filter(function(r){ return !(r[co] || {})[klic]; }).map(function(r){ return esc(r.dil.title); });
   return '<section class="regal napric"><a class="zpet" href="#napric/' + encodeURIComponent(id) + '">← napříč řadou</a>'
     + '<h3>' + esc(jmeno || klic) + ' · ' + nazevRady + '</h3><ul class="napric-jadra">' + radky + '</ul>'
     + (chybi.length ? '<p class="z-pozn">Chybí u: ' + chybi.join(', ') + '</p>' : '') + '</section>';
@@ -90,7 +100,7 @@ return {
   },
   trasa: async function(h){
     var m = h.match(/^#rada\/([^\/]+)$/); if (m) return htmlRada(decodeURIComponent(m[1]));
-    m = h.match(/^#napric\/([^\/]+)(?:\/(cast|pojem)\/(.+))?$/);
+    m = h.match(/^#napric\/([^\/]+)(?:\/(cast|pojem|situace)\/(.+))?$/);
     if (m) return htmlNapric(decodeURIComponent(m[1]), m[2], m[3] && decodeURIComponent(m[3]));
     return null;
   },
